@@ -3,7 +3,7 @@
 
 import os
 import sys
-import md5
+import hashlib
 
 def walk_dir(dir,fileinfo,topdown=True):
 	for root, dirs, files in os.walk(dir, topdown):
@@ -15,24 +15,15 @@ def walk_dir(dir,fileinfo,topdown=True):
 
 def get_file_sha1(f):
 	m = hashlib.sha1()
-
 	while True:
 		data = f.read(10240)
 		if not data:
 			break
-
 		m.update(data)
 	return m.hexdigest()
 
 def sumfile(fpath):
-	m = md5.new()
-	fobj = open(fpath)
-	while True:
-		d = fobj.read(8096)
-		if not d:
-			break
-		m.update(d)
-	return m.hexdigest()
+	return get_file_sha1(open(fpath))
 
 #获取脚本文件的当前路径
 def cur_file_dir():
