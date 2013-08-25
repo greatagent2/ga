@@ -1,3 +1,3 @@
-python check_google_ip.py
+python autoupdate.py
 @start /min git_commit.bat
 pause
