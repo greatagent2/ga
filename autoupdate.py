@@ -171,20 +171,17 @@ class Updater(object):
 		path = self.dir+filename
 		output = open(path,"w+b")
 		output.write(file)
-		print file
 		print 'Update	'+filename+'	OK!'
 		output.close()
 	def update(self):
 		oldsha1 = sha1
 		path = 'sha1.ini.tmp'
 		output = open(path,"w+b")
-		print path
 		tmp = self.opener.open(self.server+'/sha1.ini')
 		output.write(tmp.read()) 
 		output.close()
 		newsha1 = Config('sha1.ini.tmp')
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
-			print(path + ':		'+'sha1v'+ ':		'+oldsha1.getconfig('FILE_SHA1',path))
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
