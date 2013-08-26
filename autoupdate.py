@@ -161,7 +161,8 @@ class Updater(object):
 			except Exception as e:
 				print e
 				return
-	def writefile(self,filename,file):
+	def writefile(self,filename):
+		file = self.getfile(filename)
 		newpath = dir+path
 		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
 		new_file_sha1 = FileUtil.sumfile(newpath)
@@ -171,7 +172,7 @@ class Updater(object):
 			print 'Update	'+filename+'	OK!'
 			output.close()
 	def update(self):
-		print self.getfile('/hash.sha1')
+		print self.writefile('/hash.sha1')
 		
 
 
