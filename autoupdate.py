@@ -27,7 +27,7 @@ from simpleproxy import server
 from simpleproxy import logging
 from simpleproxy import common as proxyconfig
 from common import sysconfig as common
-from makehash import FileUtil
+from common import FileUtil
 from common import config
 from common import __config__
 from common import __sha1__
