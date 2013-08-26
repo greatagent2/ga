@@ -1038,9 +1038,9 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		if common.GAE_USEFAKEHTTPS:
 			if host.endswith(common.GOOGLE_SITES):
 				http_util.dns[host] = common.GOOGLE_HOSTS
-			self.do_CONNECT_FWD()
-		else:
 			self.do_CONNECT_PROCESS()
+		else:
+			self.do_CONNECT_FWD()
 
 	def do_CONNECT_FWD(self):
 		"""socket forward for http CONNECT command"""
