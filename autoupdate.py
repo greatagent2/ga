@@ -35,6 +35,7 @@ from common import __sha1__
 from common import __file__
 from common import __version__
 from makehash import makehash
+from sign import verify
 
 import os
 import sys
@@ -77,6 +78,10 @@ class Updater(object):
 		tmp = self.opener.open(self.server+'/sha1.ini')
 		output.write(tmp.read()) 
 		output.close()
+		input = open(path,"w+b")
+		verify(self.opener.open(self.server+'/sha1.sign'),input.read()
+		output.write(tmp.read()) 
+		input.close()
 		newsha1 = Config('sha1.ini.tmp')
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):

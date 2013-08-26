@@ -10,7 +10,6 @@ import glob
 
 sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 sys.path += glob.glob('%s/lib/*.egg' % os.path.dirname(os.path.abspath(__file__)))
-sys.path += glob.glob('%s/lib/*.*' % os.path.dirname(os.path.abspath(__file__)))
 import rsa
 import base92
 
@@ -56,13 +55,22 @@ def make():
 	print pubkey.save_pkcs1()
 	print '----------------------------------'
 	print privkey.save_pkcs1()
+	
+def do(message):
+	FileUtil.if_has_file_remove('sha1.sign')
+	output = open('sha1.sign',"w+b")
+	output.write(sign(message))
+	output.close()
+	input = open('sha1.sign',"rb")
+	ok = verify(message,input.read())
+	input.close()
+	return ok
 
 def main():
 	dir = FileUtil.cur_file_dir()
 	print dir
 	os.chdir(dir)
-	#sys.stdout.write(common.info())
-	print verify("wwqgtxx",sign("wwqgtxx"))
+	print do('wwqgtxx')
 
 
 
