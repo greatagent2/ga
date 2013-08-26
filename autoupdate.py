@@ -125,7 +125,7 @@ class Common(object):
 		"""load config from ini"""
 		self.CONFIG = config.CONFIG
 		
-		self.AUTOUPDATE_SERVER = tuple(x for x in self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|') if x)
+		self.AUTOUPDATE_SERVER = self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|')
 		self.REGEX_PATH = tuple(x for x in self.CONFIG.get('regex', 'path').split('|') if x)
 		
 		random.shuffle(self.AUTOUPDATE_SERVER)
