@@ -1120,7 +1120,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				if need_switch:
 					common.GAE_PROFILE = 'google_hk'
 					common.GOOGLE_MODE = 'https'
-					common.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (common.GOOGLE_MODE, common.GAE_APPIDS[0], common.GAE_PATH)
 					http_util.max_window = common.GOOGLE_WINDOW = common.CONFIG.getint('google_hk', 'window')
 					common.GOOGLE_HOSTS = list(set(x for x in common.CONFIG.get(common.GAE_PROFILE, 'hosts').split('|') if x))
 			self._update_google_iplist()

@@ -146,16 +146,16 @@ class Common(object):
 common = Common()
 
 class Updater(object):
-	def __init__(self,server,old_file_sha1_ini,dir):
+	def __init__(self,serverurl,old_file_sha1_ini,dir):
 		proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
 		self.opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
-		self.server = str(server)
+		self.server = str(serverurl)
 		self.old_file_sha1_ini = old_file_sha1_ini
 		self.dir = dir
 	def getfile(self,filename):
 		while 1:
 			try:
-				response = self.opener.open(server+filename)
+				response = self.opener.open(self.server+filename)
 				file = response.read()
 				return file
 			except Exception as e:
@@ -168,6 +168,7 @@ class Updater(object):
 		if not old_file_sha1 == new_file_sha1:
 			output = open(newpath)
 			output.write(file)
+			print 'Update	'+filename+'	OK!'
 			output.close()
 	def update(self):
 		print self.getfile('/hash.sha1')
