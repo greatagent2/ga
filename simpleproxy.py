@@ -5,6 +5,12 @@
 
 __version__ = '1.0.0'
 
+import sys
+import os
+import glob
+
+sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
+
 try:
 	import gevent
 	import gevent.socket
