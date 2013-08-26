@@ -156,7 +156,7 @@ class Updater(object):
 		while 1:
 			try:
 				response = self.opener.open(self.server+filename)
-				file = response.read()
+				file = response
 				return file
 			except Exception as e:
 				print e
