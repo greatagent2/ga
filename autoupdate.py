@@ -168,11 +168,11 @@ class Updater(object):
 		new_file_sha1 = FileUtil.get_file_sha1(file)
 		if not old_file_sha1 == new_file_sha1:
 			output = open(path)
-			output.write(file,"wb")
+			output.write(file,"w+b")
 			print 'Update	'+filename+'	OK!'
 			output.close()
 	def update(self):
-		print self.writefile('/hash.sha1')
+		self.writefile('/hash.sha1')
 		
 
 
