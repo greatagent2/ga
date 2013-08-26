@@ -79,7 +79,7 @@ class Updater(object):
 		output.write(tmp.read()) 
 		output.close()
 		input = open(path,"w+b")
-		verify(self.opener.open(self.server+'/sha1.sign'),input.read())
+		verify(self.opener.open(self.server+'/sha1.sign').read(),input.read())
 		input.close()
 		newsha1 = Config('sha1.ini.tmp')
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
