@@ -154,6 +154,7 @@ def main():
 	os.chdir(dir)
 	print dir
 	sys.stdout.write(common.info())
+	sys.stdout.write(proxyconfig.info())
 	thread.start_new_thread(server.serve_forever, tuple())
 	updater.update()
 	FileUtil.walk_dir(dir)
