@@ -195,28 +195,15 @@ class Common(object):
 	def info(self):
 		info = ''
 		info += '------------------------------------------------------\n'
-		info += 'GoAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
+		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
 		info += 'Uvent Version	  : %s (pyuv/%s libuv/%s)\n' % (__import__('uvent').__version__, __import__('pyuv').__version__, __import__('pyuv').LIBUV_VERSION) if all(x in sys.modules for x in ('pyuv', 'uvent')) else ''
 		info += 'Listen Address	 : %s:%d\n' % (self.LISTEN_IP, self.LISTEN_PORT)
 		info += 'Local Proxy		: %s:%s\n' % (self.PROXY_HOST, self.PROXY_PORT) if self.PROXY_ENABLE else ''
 		info += 'Debug INFO		 : %s\n' % self.LISTEN_DEBUGINFO if self.LISTEN_DEBUGINFO else ''
 		info += 'GAE Mode		   : %s\n' % self.GOOGLE_MODE
 		info += 'GAE Profile		: %s\n' % self.GAE_PROFILE
-		info += 'GAE APPID		  : %s\n' % '|'.join(self.GAE_APPIDS)
 		info += 'GAE Validate	   : %s\n' % self.GAE_VALIDATE if self.GAE_VALIDATE else ''
 		info += 'GAE Obfuscate	  : %s\n' % self.GAE_OBFUSCATE if self.GAE_OBFUSCATE else ''
-		if common.PAC_ENABLE:
-			info += 'Pac Server		 : http://%s:%d/%s\n' % (self.PAC_IP, self.PAC_PORT, self.PAC_FILE)
-			info += 'Pac File		   : file://%s\n' % os.path.join(os.path.dirname(os.path.abspath(__file__)), self.PAC_FILE).replace('\\', '/')
-		if common.PAAS_ENABLE:
-			info += 'PAAS Listen		: %s\n' % common.PAAS_LISTEN
-			info += 'PAAS FetchServer   : %s\n' % common.PAAS_FETCHSERVER
-		if common.DNS_ENABLE:
-			info += 'DNS Listen		 : %s\n' % common.DNS_LISTEN
-			info += 'DNS Remote		 : %s\n' % common.DNS_REMOTE
-		if common.LIGHT_ENABLE:
-			info += 'LIGHT Listen	   : %s\n' % common.LIGHT_LISTEN
-			info += 'LIGHT Server	   : %s\n' % common.LIGHT_SERVER
 		info += '------------------------------------------------------\n'
 		return info
 
@@ -1252,7 +1239,7 @@ def main():
 	print dir
 	sys.stdout.write(common.info())
 	server = LocalProxyServer((common.LISTEN_IP, common.LISTEN_PORT), GAEProxyHandler)
-	server.serve_forever()
+	thread.start_new_thread(server.serve_forever, tuple())
 	FileUtil.walk_dir(dir)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
 		newpath = path.replace('$path$',dir)
