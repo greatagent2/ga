@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding:utf-8
-# autoupdate.py
+# common.py
 # Author: Wang Wei Qiang <wwqgtxx@gmail.com>
 
 __config__   = 'autoupdate.ini'

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding:utf-8
-# autoupdate.py
+# makehash.py
 # Author: Wang Wei Qiang <wwqgtxx@gmail.com>
 
 
@@ -56,26 +56,14 @@ def makehash(dir,topdown=True):
 				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
 	return sha1
 
-
-
-
 FileUtil.if_has_file_remove(__sha1__)
-
-
 
 def main():
 	dir = FileUtil.cur_file_dir()
 	os.chdir(dir)
 	sys.stdout.write(common.info())
-	sys.stdout.write(proxyconfig.info())
-	thread.start_new_thread(server.serve_forever, tuple())
-	FileUtil.walk_dir(dir)
-	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
-	#updater.update()
+	makehash(dir)
 
-	#for path, sha1v in sha1.getsection('FILE_SHA1'):
-		#newpath = path.replace('$path$',dir)
-		#print newpath + ' = ' + sha1v
 
 if __name__ == '__main__':
 	main()
