@@ -17,6 +17,9 @@ class FileUtil(object):
 		for root, dirs, files in os.walk(dir, topdown):
 			for name in files:
 				path = os.path.join(root,name)
+				regex=ur"/  \.\\\\.git\\\/"
+				if re.search(regex, path):
+					continue
 				sha1v = FileUtil.sumfile(path)
 				newpath = path.replace(dir,'$path$')
 				fileinfo.write(newpath + ':' + sha1v + '\n')
