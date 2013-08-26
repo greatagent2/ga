@@ -1182,12 +1182,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		try:
 			content_length = int(self.headers.get('Content-Length', 0))
 			payload = self.rfile.read(content_length) if content_length else b''
-			if common.HOSTS_MATCH and any(x(self.path) for x in common.HOSTS_MATCH):
-				realhost = next(common.HOSTS_MATCH[x] for x in common.HOSTS_MATCH if x(self.path)) or re.sub(r':\d+$', '', self.parsed_url.netloc)
-				logging.debug('hosts pattern mathed, url=%r realhost=%r', self.path, realhost)
-				response = http_util.request(self.command, self.path, payload, self.headers, realhost=realhost, crlf=common.GAE_CRLF)
-			else:
-				response = http_util.request(self.command, self.path, payload, self.headers, crlf=common.GAE_CRLF)
+			response = http_util.request(self.command, self.path, payload, self.headers, crlf=common.GAE_CRLF)
 			if not response:
 				return
 			logging.info('%s "FWD %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
