@@ -3,6 +3,8 @@
 
 import os
 import sys
+import re
+import ConfigParser
 import hashlib
 
 class Common(object):
