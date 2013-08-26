@@ -1,3 +1,3 @@
 python autoupdate.py
-@start git_commit.bat
+@start /min git_commit.bat
 pause

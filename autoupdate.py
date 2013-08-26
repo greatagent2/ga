@@ -83,7 +83,7 @@ class FileUtil(object):
 		for root, dirs, files in os.walk(dir, topdown):
 			for name in files:
 				path = os.path.join(root,name)
-				md5v = sumfile(path)
+				md5v = FileUtil.sumfile(path)
 				newpath = path.replace(dir,'')
 				fileinfo.write(newpath + ':' + md5v + '\n')
 
