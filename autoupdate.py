@@ -75,11 +75,11 @@ class Updater(object):
 	def update(self):
 		oldsha1 = self.old_file_sha1_ini
 		path = 'sha1.ini.tmp'
-		output = open(path,"w+b")
+		output = open(path,"wb")
 		tmp = self.opener.open(self.server+'/sha1.ini')
 		output.write(tmp.read()) 
 		output.close()
-		input = open(path,"rb")
+		input = open(path,"r")
 		tmp2 = input.read()
 		input.close()
 		hash = self.opener.open(self.server+'/sha1.sign').read()
