@@ -169,16 +169,11 @@ class Updater(object):
 	def writefile(self,filename):
 		file = self.getfile(filename)
 		path = self.dir+filename
-		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
-		print 'old_file_sha1:	'+old_file_sha1
-		new_file_sha1 = FileUtil.get_data_sha1(file)
-		print 'new_file_sha1:	'+new_file_sha1
-		if not old_file_sha1 == new_file_sha1:
-			output = open(path,"w+b")
-			output.write(file)
-			print file
-			print 'Update	'+filename+'	OK!'
-			output.close()
+		output = open(path,"w+b")
+		output.write(file)
+		print file
+		print 'Update	'+filename+'	OK!'
+		output.close()
 	def update(self):
 		oldsha1 = sha1
 		newsha1 = Config(self.getfile('/sha1.ini'))
