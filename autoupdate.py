@@ -79,8 +79,7 @@ class FileUtil(object):
 		
 	@staticmethod
 	def get_data_sha1(data):
-		m = hashlib.sha1()
-		m.update(data)
+		m = hashlib.sha1(data)
 		return m.hexdigest()
 
 	@staticmethod
