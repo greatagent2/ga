@@ -76,6 +76,12 @@ class FileUtil(object):
 				break
 			m.update(data)
 		return m.hexdigest()
+		
+	@staticmethod
+	def get_data_sha1(data):
+		m = hashlib.sha1()
+		m.update(data)
+		return m.hexdigest()
 
 	@staticmethod
 	def sumfile(fpath):
@@ -156,7 +162,7 @@ class Updater(object):
 		while 1:
 			try:
 				response = self.opener.open(self.server+filename)
-				file = response
+				file = response.read()
 				return file
 			except Exception as e:
 				print e
@@ -168,7 +174,7 @@ class Updater(object):
 		new_file_sha1 = FileUtil.get_file_sha1(file)
 		if not old_file_sha1 == new_file_sha1:
 			output = open(path,"w+b")
-			output.write(file.read())
+			output.write(file)
 			print file.read()
 			print 'Update	'+filename+'	OK!'
 			output.close()
