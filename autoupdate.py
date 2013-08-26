@@ -163,7 +163,7 @@ class Updater(object):
 				return
 	def writefile(self,filename):
 		file = self.getfile(filename)
-		newpath = dir+path
+		newpath = dir+self.path
 		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
 		new_file_sha1 = FileUtil.sumfile(newpath)
 		if not old_file_sha1 == new_file_sha1:
