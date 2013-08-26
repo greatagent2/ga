@@ -68,6 +68,8 @@ class Config(object):
 		self.CONFIG.read(FileUtil.getfile(config))
 
 	def writeconfig(self,section, option,str):
+		if not self.CONFIG.has_section(section):
+			self.CONFIG.add_section(section)
 		self.CONFIG.set(section,option,str)
 		f = open(FileUtil.getfile(__config__),'w') 
 		self.CONFIG.write(f)
