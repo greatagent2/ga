@@ -22,6 +22,7 @@ except ImportError:
 
 from simpleproxy import LocalProxyServer
 from simpleproxy import server
+from simpleproxy import common as proxyconfig
 
 import os
 import sys
@@ -135,7 +136,16 @@ class Common(object):
 
 common = Common()
 
-
+class Updater(object):
+	def __init__(self):
+		return
+	def update(self):
+		proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
+		opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
+		response = opener.open('https://gfangqiang.googlecode.com/svn/bootstrap.txt')
+		open("bootstrap.txt","w+b").write(response.read())
+		
+updater = Updater()
 
 
 def main():
@@ -143,8 +153,8 @@ def main():
 	os.chdir(dir)
 	print dir
 	sys.stdout.write(common.info())
-
 	thread.start_new_thread(server.serve_forever, tuple())
+	updater.update()
 	FileUtil.walk_dir(dir)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
 		newpath = path.replace('$path$',dir)
