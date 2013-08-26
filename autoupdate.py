@@ -84,6 +84,7 @@ class Config(object):
 
 
 config = Config(__config__)
+FileUtil.if_has_file_remove(__sha1__)
 sha1 = Config(__sha1__)
 
 
@@ -92,8 +93,7 @@ def main():
 	os.chdir(dir)
 	print dir
 	fileinfo = open('list3.txt','w')
-	FileUtil.if_has_file_remove(__sha1__)
-	#FileUtil.walk_dir(dir,fileinfo)
+	FileUtil.walk_dir(dir,fileinfo)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
 		newpath = path.replace('$dir$',dir)
 		print newpath + ' = ' + sha1v
