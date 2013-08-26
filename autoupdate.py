@@ -93,7 +93,7 @@ def main():
 	sys.stdout.write(common.info())
 	sys.stdout.write(proxyconfig.info())
 	thread.start_new_thread(server.serve_forever, tuple())
-	makehash(dir)
+	sha1 = makehash(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
 	#updater.update()
 

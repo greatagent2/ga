@@ -43,6 +43,7 @@ import urllib2
 import random
 
 def makehash(dir,topdown=True):
+	sha1 = Config(__sha1__)
 	for root, dirs, files in os.walk(dir, topdown):
 		for name in files:
 			path = os.path.join(root,name)
@@ -53,13 +54,13 @@ def makehash(dir,topdown=True):
 			else:
 				sha1v = FileUtil.sumfile(path)
 				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
-
+	return sha1
 
 
 
 
 FileUtil.if_has_file_remove(__sha1__)
-sha1 = Config(__sha1__)
+
 
 
 def main():
