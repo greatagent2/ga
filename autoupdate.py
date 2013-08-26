@@ -7,13 +7,16 @@ import re
 import ConfigParser
 import hashlib
 
+__config__   = 'proxy.ini'
+__file__     = 'autoupdate.py'
+
 class Common(object):
 
-	def __init__(self):
+	def __init__(self,config):
 		"""load config from proxy.ini"""
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 		self.CONFIG = ConfigParser.ConfigParser()
-		self.CONFIG.read(os.path.join(os.path.dirname(__file__), __config__))
+		self.CONFIG.read(os.path.join(os.path.dirname(__file__), config))
 		self.IPS = []
 
 
@@ -72,7 +75,7 @@ class Common(object):
 		return self.CONFIG.get(section, option)if self.CONFIG.has_option(section, option) else ''
 		
 		
-common = Common()
+common = Common(__config__)
 
 class FileUtil(object):
 	@staticmethod
