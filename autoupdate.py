@@ -160,7 +160,7 @@ def main():
 	FileUtil.walk_dir(dir)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
 		newpath = path.replace('$path$',dir)
-		print newpath + ' = ' + sha1v
+		#print newpath + ' = ' + sha1v
 
 if __name__ == '__main__':
 	main()

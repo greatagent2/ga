@@ -892,8 +892,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				logging.error('resolve %s domain return empty! try remote dns resovle!', common.GAE_PROFILE)
 				common.GOOGLE_HOSTS = common.CONFIG.get(common.GAE_PROFILE, 'hosts').split('|')
 				#sys.exit(-1)
-		for appid in common.GAE_APPIDS:
-			http_util.dns['%s.appspot.com' % appid] = list(set(common.GOOGLE_HOSTS))
 		logging.info('resolve common.GOOGLE_HOSTS domain to iplist=%r', common.GOOGLE_HOSTS)
 
 	def first_run(self):
