@@ -95,7 +95,7 @@ def main():
 	FileUtil.if_has_file_remove(__sha1__)
 	FileUtil.walk_dir(dir,fileinfo)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
-		newpath = path.replace('$dir$',"")
+		newpath = path.replace('$dir$',dir)
 		print newpath + ' = ' + sha1v
 
 if __name__ == '__main__':
