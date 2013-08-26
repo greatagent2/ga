@@ -924,7 +924,7 @@ class HTTPUtil(object):
 				else:
 					continue
 
-http_util = HTTPUtil(max_window=common.GOOGLE_WINDOW, ssl_validate=common.GAE_VALIDATE or common.PAAS_VALIDATE, ssl_obfuscate=common.GAE_OBFUSCATE, proxy=common.proxy)
+http_util = HTTPUtil(max_window=common.GOOGLE_WINDOW, ssl_validate=common.GAE_VALIDATE , ssl_obfuscate=common.GAE_OBFUSCATE, proxy=common.proxy)
 class LocalProxyServer(SocketServer.ThreadingTCPServer):
 	"""Local Proxy Server"""
 	allow_reuse_address = True
