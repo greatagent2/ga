@@ -57,6 +57,7 @@ import hashlib
 __config__   = 'autoupdate.ini'
 __sha1__   = 'sha1.ini'
 __file__	 = 'autoupdate.py'
+__version__ = '2.0.0'
 
 class FileUtil(object):
 	@staticmethod
