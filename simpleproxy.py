@@ -1167,11 +1167,8 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		if common.USERAGENT_ENABLE:
 			self.headers['User-Agent'] = common.USERAGENT_STRING
 
-		### rules match algorithm, need_forward= True or False
-		need_forward = False
-		if common.HOSTS_MATCH and any(x(self.path) for x in common.HOSTS_MATCH) or self.command not in ('GET', 'POST', 'HEAD', 'PUT', 'DELETE', 'PATCH'):
-			need_forward = True
-		elif host.endswith(common.GOOGLE_SITES):
+
+		if host.endswith(common.GOOGLE_SITES):
 			if host not in http_util.dns:
 				#http_util.dns[host] = http_util.dns.default_factory(http_util.dns_resolve(host))
 				http_util.dns[host] = list(set(common.GOOGLE_HOSTS))
