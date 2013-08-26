@@ -15,6 +15,10 @@ try:
 	gevent.monkey.patch_all()
 except (ImportError, SystemError):
 	gevent = None
+try:
+	import OpenSSL
+except ImportError:
+	OpenSSL = None
 
 from simpleproxy import LocalProxyServer
 from simpleproxy import server
