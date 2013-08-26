@@ -138,7 +138,7 @@ class Common(object):
 		info = ''
 		info += '------------------------------------------------------\n'
 		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
-		info += 'Server          : %s\n' % '|'.join(AUTOUPDATE_SERVER)
+		info += 'Server          : %s\n' % '|'.join(self.AUTOUPDATE_SERVER)
 		info += '------------------------------------------------------\n'
 		return info
 
