@@ -105,7 +105,7 @@ class Config(object):
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 		self.FILENAME = config
 		self.CONFIG = ConfigParser.ConfigParser()
-		self.CONFIG.read(config)
+		self.CONFIG.read(FileUtil.getfile(config))
 
 	def writeconfig(self,section, option,str):
 		if not self.CONFIG.has_section(section):
@@ -122,9 +122,9 @@ class Config(object):
 		return self.CONFIG.items(section) if self.CONFIG.has_section(section) else ''
 
 
-config = Config(FileUtil.getfile(__config__))
+config = Config(__config__)
 FileUtil.if_has_file_remove(__sha1__)
-sha1 = Config(FileUtil.getfile(__sha1__))
+sha1 = Config(__sha1__)
 
 class Common(object):
 	"""Global Config Object"""
@@ -176,10 +176,19 @@ class Updater(object):
 		output.close()
 	def update(self):
 		oldsha1 = sha1
-		newsha1 = Config(self.getfile('/sha1.ini'))
+		path = 'sha1.ini.tmp'
+		output = open(path,"w+b")
+		print path
+		tmp = self.opener.open(self.server+'/sha1.ini')
+		output.write(tmp.read()) 
+		output.close()
+		newsha1 = Config('sha1.ini.tmp')
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
+			print(path + ':		'+'sha1v'+ ':		'+oldsha1.getconfig('FILE_SHA1',path))
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):
-				writefile(path)
+				path = path.replace('$path$','')
+				path = path.replace('\\','/')
+				self.writefile(path)
 		
 
 
@@ -194,8 +203,8 @@ def main():
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
 	#updater.update()
 
-	for path, sha1v in sha1.getsection('FILE_SHA1'):
-		newpath = path.replace('$path$',dir)
+	#for path, sha1v in sha1.getsection('FILE_SHA1'):
+		#newpath = path.replace('$path$',dir)
 		#print newpath + ' = ' + sha1v
 
 if __name__ == '__main__':
