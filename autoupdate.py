@@ -23,7 +23,7 @@ class FileUtil(object):
 				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
 
 	@staticmethod
-	def getfile(self,filename):
+	def getfile(filename):
 		return (os.path.join(FileUtil.cur_file_dir(),config))
 
 	@staticmethod
