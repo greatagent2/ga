@@ -17,11 +17,12 @@ class FileUtil(object):
 		for root, dirs, files in os.walk(dir, topdown):
 			for name in files:
 				path = os.path.join(root,name)
+				newpath = path.replace(dir,'$path$')
+				regexpath = path.replace(dir,'.')
 				regex=ur"/  \.\\\\.git\\\/"
-				if re.search(regex, path):
+				if re.search(regex, regexpath):
 					continue
 				sha1v = FileUtil.sumfile(path)
-				newpath = path.replace(dir,'$path$')
 				fileinfo.write(newpath + ':' + sha1v + '\n')
 				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
 
