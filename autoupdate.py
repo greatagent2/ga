@@ -79,7 +79,10 @@ class FileUtil(object):
 
 	@staticmethod
 	def sumfile(fpath):
-		return FileUtil.get_file_sha1(open(fpath))
+		input = open(fpath)
+		sum = FileUtil.get_file_sha1(input)
+		input.close()
+		return sum
 
 	@staticmethod
 	def cur_file_dir():
@@ -135,6 +138,7 @@ class Common(object):
 		info = ''
 		info += '------------------------------------------------------\n'
 		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
+		info += 'Server          : %s\n' % '|'.join(AUTOUPDATE_SERVER)
 		info += '------------------------------------------------------\n'
 		return info
 
@@ -142,20 +146,31 @@ class Common(object):
 common = Common()
 
 class Updater(object):
-	def __init__(self,server):
+	def __init__(self,server,old_file_sha1_ini,dir):
 		proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
 		self.opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
 		self.server = server
+		self.old_file_sha1_ini = old_file_sha1_ini
+		self.dir = dir
 	def getfile(self,filename):
 		while 1:
 			try:
-				response = opener.open(server+filename)
+				response = self.opener.open(server+filename)
 				file = response.read()
 				return file
 			except Exception as e:
-				logging.warning(e)
+				print e
+				return
+	def writefile(self,filename,file):
+		newpath = dir+path
+		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
+		new_file_sha1 = FileUtil.sumfile(newpath)
+		if not old_file_sha1 == new_file_sha1:
+			output = open(newpath)
+			output.write(file)
+			output.close()
 	def update(self):
-		print self.getfile('hash.sha1')
+		print self.getfile('/hash.sha1')
 		
 
 
@@ -166,9 +181,10 @@ def main():
 	sys.stdout.write(common.info())
 	sys.stdout.write(proxyconfig.info())
 	thread.start_new_thread(server.serve_forever, tuple())
-	updater = Updater(common.AUTOUPDATE_SERVER[0])
-	updater.update()
 	FileUtil.walk_dir(dir)
+	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
+	updater.update()
+
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
 		newpath = path.replace('$path$',dir)
 		#print newpath + ' = ' + sha1v
