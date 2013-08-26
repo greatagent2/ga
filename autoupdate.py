@@ -22,6 +22,7 @@ except ImportError:
 
 from simpleproxy import LocalProxyServer
 from simpleproxy import server
+from simpleproxy import logging
 from simpleproxy import common as proxyconfig
 
 import os
@@ -31,6 +32,7 @@ import ConfigParser
 import hashlib
 import thread
 import urllib2
+import random
 
 __config__   = 'autoupdate.ini'
 __sha1__   = 'sha1.ini'
@@ -125,6 +127,8 @@ class Common(object):
 		
 		self.AUTOUPDATE_SERVER = tuple(x for x in self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|') if x)
 		self.REGEX_PATH = tuple(x for x in self.CONFIG.get('regex', 'path').split('|') if x)
+		
+		random.shuffle(self.AUTOUPDATE_SERVER)
 
 		
 	def info(self):
@@ -138,24 +142,31 @@ class Common(object):
 common = Common()
 
 class Updater(object):
-	def __init__(self):
-		return
+	def __init__(self,server):
+		self.proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
+		self.opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
+		self.server = server
+	def getfile(self,filename):
+		while 1:
+			try:
+				response = opener.open(server+filename)
+				file = response.read()
+				return file
+			except Exception as e:
+				logging.warning(e)
 	def update(self):
-		proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
-		opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
-		response = opener.open('https://gfangqiang.googlecode.com/svn/bootstrap.txt')
-		open("bootstrap.txt","w+b").write(response.read())
+		print self.getfile('hash.sha1')
 		
-updater = Updater()
+
 
 
 def main():
 	dir = FileUtil.cur_file_dir()
 	os.chdir(dir)
-	print dir
 	sys.stdout.write(common.info())
 	sys.stdout.write(proxyconfig.info())
 	thread.start_new_thread(server.serve_forever, tuple())
+	updater = Updater(common.AUTOUPDATE_SERVER[0])
 	updater.update()
 	FileUtil.walk_dir(dir)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
