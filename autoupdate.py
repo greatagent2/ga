@@ -41,7 +41,7 @@ class FileUtil(object):
 				sha1v = FileUtil.sumfile(path)
 				newpath = path.replace(dir,'!DIR!')
 				fileinfo.write(newpath + ':' + sha1v + '\n')
-				sha1.writeconfig('FILE_SHA1',newpath,sha1v))
+				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
 
 	@staticmethod
 	def getfile(self,filename):
