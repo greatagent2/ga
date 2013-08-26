@@ -25,7 +25,7 @@ import re
 import ConfigParser
 import hashlib
 
-from makehash import config
+
 class Config(object):
 
 	def __init__(self,config):
@@ -48,6 +48,8 @@ class Config(object):
 
 	def getsection(self,section):
 		return self.CONFIG.items(section) if self.CONFIG.has_section(section) else ''
+
+config = Config(__config__)
 
 class Common(object):
 	"""Global Config Object"""

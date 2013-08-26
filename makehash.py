@@ -27,6 +27,7 @@ from simpleproxy import server
 from simpleproxy import logging
 from simpleproxy import common as proxyconfig
 from common import sysconfig as common
+from common import config
 
 import os
 import sys
@@ -99,7 +100,7 @@ class FileUtil(object):
 			return os.path.dirname(path)
 
 
-config = Config(__config__)
+
 FileUtil.if_has_file_remove(__sha1__)
 sha1 = Config(__sha1__)
 
