@@ -17,7 +17,7 @@ class Config(object):
 		"""load config from proxy.ini"""
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 		self.CONFIG = ConfigParser.ConfigParser()
-		self.CONFIG.read(FileUtil.cur_file_dir(), config))
+		self.CONFIG.read(FileUtil.cur_file_dir(), config)
 
 	def writeconfig(self,section, option,str):
 		self.CONFIG.set(section,option,str)
