@@ -30,6 +30,7 @@ import re
 import ConfigParser
 import hashlib
 import thread
+import urllib2
 
 __config__   = 'autoupdate.ini'
 __sha1__   = 'sha1.ini'
