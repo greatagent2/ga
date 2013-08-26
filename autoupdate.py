@@ -18,7 +18,7 @@ class FileUtil(object):
 			for name in files:
 				path = os.path.join(root,name)
 				sha1v = FileUtil.sumfile(path)
-				newpath = path.replace(dir,'$DIR$')
+				newpath = path.replace(dir,'$dir$')
 				fileinfo.write(newpath + ':' + sha1v + '\n')
 				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
 
@@ -95,7 +95,7 @@ def main():
 	FileUtil.if_has_file_remove(__sha1__)
 	FileUtil.walk_dir(dir,fileinfo)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
-		newpath = path.replace('$DIR$',"")
+		newpath = path.replace('$dir$',"")
 		print newpath + ' = ' + sha1v
 
 if __name__ == '__main__':
