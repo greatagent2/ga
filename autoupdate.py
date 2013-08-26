@@ -33,6 +33,7 @@ from common import __config__
 from common import __sha1__
 from common import __file__
 from common import __version__
+from makehash import makehash
 
 import os
 import sys
@@ -91,7 +92,7 @@ def main():
 	sys.stdout.write(common.info())
 	sys.stdout.write(proxyconfig.info())
 	thread.start_new_thread(server.serve_forever, tuple())
-	FileUtil.walk_dir(dir)
+	makehash(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
 	#updater.update()
 
