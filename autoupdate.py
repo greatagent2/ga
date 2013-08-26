@@ -24,7 +24,12 @@ class FileUtil(object):
 
 	@staticmethod
 	def getfile(filename):
-		return (os.path.join(FileUtil.cur_file_dir(),config))
+		global __file__
+		__file__ = os.path.abspath(__file__)
+		if os.path.islink(__file__):
+			__file__ = getattr(os, 'readlink', lambda x:x)(__file__)
+		os.chdir(os.path.dirname(os.path.abspath(__file__)))
+		return os.path.join(os.path.dirname(__file__), filename)
 
 	@staticmethod
 	def if_has_file_remove(filename):
@@ -60,7 +65,7 @@ class Config(object):
 		"""load config from proxy.ini"""
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 		self.CONFIG = ConfigParser.ConfigParser()
-		self.CONFIG.read(os.path.join(FileUtil.cur_file_dir(),config))
+		self.CONFIG.read(FileUtil.getfile(config))
 
 	def writeconfig(self,section, option,str):
 		self.CONFIG.set(section,option,str)
