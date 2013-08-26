@@ -80,6 +80,7 @@ class Updater(object):
 		output.close()
 		input = open(path,"w+b")
 		hash = self.opener.open(self.server+'/sha1.sign').read()
+		print hash
 		verify(input.read(),hash)
 		input.close()
 		newsha1 = Config('sha1.ini.tmp')
