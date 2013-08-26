@@ -1142,4 +1142,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					pass
 				finally:
 					self.__realconnection = None
+					
+					
+server = LocalProxyServer((common.LISTEN_IP, common.LISTEN_PORT), GAEProxyHandler)
 

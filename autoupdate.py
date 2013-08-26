@@ -139,7 +139,7 @@ def main():
 	os.chdir(dir)
 	print dir
 	sys.stdout.write(common.info())
-	server = LocalProxyServer((common.LISTEN_IP, common.LISTEN_PORT), GAEProxyHandler)
+
 	thread.start_new_thread(server.serve_forever, tuple())
 	FileUtil.walk_dir(dir)
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
