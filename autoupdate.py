@@ -189,7 +189,7 @@ class Updater(object):
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
 				self.writefile(path)
-		
+		FileUtil.if_has_file_remove(path)
 
 
 
