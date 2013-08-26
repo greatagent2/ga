@@ -149,7 +149,7 @@ class Updater(object):
 	def __init__(self,server,old_file_sha1_ini,dir):
 		proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
 		self.opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
-		self.server = server
+		self.server = str(server)
 		self.old_file_sha1_ini = old_file_sha1_ini
 		self.dir = dir
 	def getfile(self,filename):
