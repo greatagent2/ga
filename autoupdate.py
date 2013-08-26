@@ -168,7 +168,7 @@ class Updater(object):
 		new_file_sha1 = FileUtil.sumfile(path)
 		if not old_file_sha1 == new_file_sha1:
 			output = open(newpath)
-			output.write(file)
+			output.write(file,"wb")
 			print 'Update	'+filename+'	OK!'
 			output.close()
 	def update(self):
