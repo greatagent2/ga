@@ -22,9 +22,10 @@ class FileUtil(object):
 				regex=ur"/  \.\\\\.git\\\/"
 				if re.search(regex, regexpath):
 					continue
-				sha1v = FileUtil.sumfile(path)
-				fileinfo.write(newpath + ':' + sha1v + '\n')
-				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
+				else:
+					sha1v = FileUtil.sumfile(path)
+					fileinfo.write(newpath + ':' + sha1v + '\n')
+					sha1.writeconfig('FILE_SHA1',newpath,sha1v)
 
 	@staticmethod
 	def getfile(filename):
