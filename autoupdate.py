@@ -183,7 +183,7 @@ class Updater(object):
 		oldsha1 = sha1
 		newsha1 = Config(self.getfile('/sha1.ini'))
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
-			if(sha1v == oldsha1.getconfig('FILE_SHA1',path))
+			if(sha1v == oldsha1.getconfig('FILE_SHA1',path)):
 				writefile(path)
 		
 
