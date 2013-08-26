@@ -171,7 +171,7 @@ class Updater(object):
 		file = self.getfile(filename)
 		path = self.dir+filename
 		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
-		new_file_sha1 = FileUtil.get_file_sha1(file)
+		new_file_sha1 = FileUtil.get_data_sha1(file)
 		if not old_file_sha1 == new_file_sha1:
 			output = open(path,"w+b")
 			output.write(file)
