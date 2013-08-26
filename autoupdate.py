@@ -142,7 +142,7 @@ class Common(object):
 
 	def __init__(self):
 		"""load config from ini"""
-		self.CONFIG = config
+		self.CONFIG = config.CONFIG
 		
 		self.AUTOUPDATE_SERVER = tuple(x for x in self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|') if x)
 		self.REGEX_PATH = tuple(x for x in self.CONFIG.get('regex', 'path').split('|') if x)
