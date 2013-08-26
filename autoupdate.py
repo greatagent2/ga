@@ -11,27 +11,6 @@ __config__   = 'proxy.ini'
 __sha1__   = 'sha1.ini'
 __file__     = 'autoupdate.py'
 
-class Config(object):
-
-	def __init__(self,config):
-		"""load config from proxy.ini"""
-		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
-		self.CONFIG = ConfigParser.ConfigParser()
-		self.CONFIG.read(FileUtil.cur_file_dir(), config)
-
-	def writeconfig(self,section, option,str):
-		self.CONFIG.set(section,option,str)
-		f = open(FileUtil.getfile(__config__),'w') 
-		self.CONFIG.write(f)
-		f.close()
-	
-	def getconfig(self,section, option):
-		return self.CONFIG.get(section, option)if self.CONFIG.has_option(section, option) else ''
-		
-		
-config = Config(__config__)
-sha1 = Config(__sha1__)
-
 class FileUtil(object):
 	@staticmethod
 	def walk_dir(dir,fileinfo,topdown=True):
@@ -78,6 +57,29 @@ class FileUtil(object):
 			return path
 		elif os.path.isfile(path):
 			return os.path.dirname(path)
+
+
+class Config(object):
+
+	def __init__(self,config):
+		"""load config from proxy.ini"""
+		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
+		self.CONFIG = ConfigParser.ConfigParser()
+		self.CONFIG.read(FileUtil.cur_file_dir(), config)
+
+	def writeconfig(self,section, option,str):
+		self.CONFIG.set(section,option,str)
+		f = open(FileUtil.getfile(__config__),'w') 
+		self.CONFIG.write(f)
+		f.close()
+	
+	def getconfig(self,section, option):
+		return self.CONFIG.get(section, option)if self.CONFIG.has_option(section, option) else ''
+		
+		
+config = Config(__config__)
+sha1 = Config(__sha1__)
+
 
 def main():
 	dir = FileUtil.cur_file_dir()
