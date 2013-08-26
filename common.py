@@ -25,6 +25,7 @@ import re
 import ConfigParser
 import hashlib
 
+from makehash import config
 class Config(object):
 
 	def __init__(self,config):
@@ -70,4 +71,4 @@ class Common(object):
 		return info
 
 
-config = Common()
+sysconfig = Common()

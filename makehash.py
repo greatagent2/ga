@@ -26,7 +26,7 @@ from simpleproxy import LocalProxyServer
 from simpleproxy import server
 from simpleproxy import logging
 from simpleproxy import common as proxyconfig
-from common import config as common
+from common import sysconfig as common
 
 import os
 import sys
