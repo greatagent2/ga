@@ -94,7 +94,7 @@ def main():
 	fileinfo = open('list3.txt','w')
 	FileUtil.if_has_file_remove(__sha1__)
 	FileUtil.walk_dir(dir,fileinfo)
-	print sha1.getsection(FILE_SHA1)
+	print sha1.getsection('FILE_SHA1')
 
 if __name__ == '__main__':
 	main()
