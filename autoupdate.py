@@ -143,7 +143,7 @@ common = Common()
 
 class Updater(object):
 	def __init__(self,server):
-		self.proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
+		proxies = {'http':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', proxyconfig.LISTEN_PORT)}
 		self.opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))
 		self.server = server
 	def getfile(self,filename):
