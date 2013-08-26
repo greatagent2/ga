@@ -163,9 +163,9 @@ class Updater(object):
 				return
 	def writefile(self,filename):
 		file = self.getfile(filename)
-		newpath = self.dir+path
+		path = self.dir+filename
 		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
-		new_file_sha1 = FileUtil.sumfile(newpath)
+		new_file_sha1 = FileUtil.sumfile(path)
 		if not old_file_sha1 == new_file_sha1:
 			output = open(newpath)
 			output.write(file)
