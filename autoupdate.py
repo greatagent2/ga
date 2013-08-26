@@ -197,7 +197,7 @@ def main():
 	thread.start_new_thread(server.serve_forever, tuple())
 	FileUtil.walk_dir(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
-	updater.update()
+	#updater.update()
 
 	for path, sha1v in sha1.getsection('FILE_SHA1'):
 		newpath = path.replace('$path$',dir)
