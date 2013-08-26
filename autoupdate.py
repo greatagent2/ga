@@ -956,7 +956,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 	bufsize = 256*1024
 	first_run_lock = threading.Lock()
-	urlfetch = staticmethod(gae_urlfetch)
 
 	def _update_google_iplist(self):
 		if any(not re.match(r'\d+\.\d+\.\d+\.\d+', x) for x in common.GOOGLE_HOSTS):
