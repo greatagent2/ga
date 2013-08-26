@@ -78,8 +78,11 @@ class Config(object):
 	
 	def getconfig(self,section, option):
 		return self.CONFIG.get(section, option)if self.CONFIG.has_option(section, option) else ''
-		
-		
+
+	def getsection(self,section):
+		return self.CONFIG.items(section) if self.CONFIG.has_section(section) else ''
+
+
 config = Config(__config__)
 sha1 = Config(__sha1__)
 
@@ -91,6 +94,7 @@ def main():
 	fileinfo = open('list3.txt','w')
 	FileUtil.if_has_file_remove(__sha1__)
 	FileUtil.walk_dir(dir,fileinfo)
+	print sha1.getsection(FILE_SHA1)
 
 if __name__ == '__main__':
 	main()
