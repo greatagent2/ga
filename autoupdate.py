@@ -64,6 +64,7 @@ class Config(object):
 	def __init__(self,config):
 		"""load config from proxy.ini"""
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
+		self.FILENAME = config
 		self.CONFIG = ConfigParser.ConfigParser()
 		self.CONFIG.read(FileUtil.getfile(config))
 
@@ -71,7 +72,7 @@ class Config(object):
 		if not self.CONFIG.has_section(section):
 			self.CONFIG.add_section(section)
 		self.CONFIG.set(section,option,str)
-		f = open(FileUtil.getfile(__config__),'w') 
+		f = open(FileUtil.getfile(self.FILENAME),'w') 
 		self.CONFIG.write(f)
 		f.close()
 	
