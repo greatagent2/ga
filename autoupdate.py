@@ -105,7 +105,7 @@ class Config(object):
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 		self.FILENAME = config
 		self.CONFIG = ConfigParser.ConfigParser()
-		self.CONFIG.read(FileUtil.getfile(config))
+		self.CONFIG.read(config)
 
 	def writeconfig(self,section, option,str):
 		if not self.CONFIG.has_section(section):
@@ -122,9 +122,9 @@ class Config(object):
 		return self.CONFIG.items(section) if self.CONFIG.has_section(section) else ''
 
 
-config = Config(__config__)
+config = Config(FileUtil.getfile(__config__))
 FileUtil.if_has_file_remove(__sha1__)
-sha1 = Config(__sha1__)
+sha1 = Config(FileUtil.getfile(__sha1__))
 
 class Common(object):
 	"""Global Config Object"""
@@ -169,7 +169,7 @@ class Updater(object):
 	def writefile(self,filename):
 		file = self.getfile(filename)
 		path = self.dir+filename
-		old_file_sha1 = FileUtil.sumfile(path)
+		old_file_sha1 = sha1.getconfig('FILE_SHA1','$path$'+filename)
 		print 'old_file_sha1:	'+old_file_sha1
 		new_file_sha1 = FileUtil.get_data_sha1(file)
 		print 'new_file_sha1:	'+new_file_sha1
@@ -180,7 +180,11 @@ class Updater(object):
 			print 'Update	'+filename+'	OK!'
 			output.close()
 	def update(self):
-		self.writefile('/hash.sha1')
+		oldsha1 = sha1
+		newsha1 = Config(self.getfile('/sha1.ini'))
+		for path, sha1v in newsha1.getsection('FILE_SHA1'):
+			if(sha1v == oldsha1.getconfig('FILE_SHA1',path))
+				writefile(path)
 		
 
 
