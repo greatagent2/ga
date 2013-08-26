@@ -36,6 +36,7 @@ from common import __file__
 from common import __version__
 from makehash import makehash
 from sign import verify
+from sign import sign
 
 import os
 import sys
@@ -72,17 +73,23 @@ class Updater(object):
 		print 'Update	'+filename+'	OK!'
 		output.close()
 	def update(self):
-		oldsha1 = sha1
+		oldsha1 = self.old_file_sha1_ini
 		path = 'sha1.ini.tmp'
 		output = open(path,"w+b")
 		tmp = self.opener.open(self.server+'/sha1.ini')
 		output.write(tmp.read()) 
 		output.close()
-		input = open(path,"w+b")
-		hash = self.opener.open(self.server+'/sha1.sign').read()
-		print hash
-		verify(input.read(),hash)
+		input = open(path,"rb")
+		tmp2 = input.read()
 		input.close()
+		hash = self.opener.open(self.server+'/sha1.sign').read()
+		print sign(tmp2)
+		print hash
+		ok = verify(tmp2,hash)
+		if not ok:
+			print 'Verify Failed!'
+			#return
+		print 'Verify Successful1!'
 		newsha1 = Config('sha1.ini.tmp')
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):
@@ -101,7 +108,7 @@ def main():
 	thread.start_new_thread(server.serve_forever, tuple())
 	sha1 = makehash(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
-	#updater.update()
+	updater.update()
 
 	#for path, sha1v in sha1.getsection('FILE_SHA1'):
 		#newpath = path.replace('$path$',dir)
