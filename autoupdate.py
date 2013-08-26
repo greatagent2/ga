@@ -120,62 +120,11 @@ class Common(object):
 		self.AUTOUPDATE_SERVER = tuple(x for x in self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|') if x)
 		self.REGEX_PATH = tuple(x for x in self.CONFIG.get('regex', 'path').split('|') if x)
 
-		self.LISTEN_IP = self.CONFIG.get('listen', 'ip')
-		self.LISTEN_PORT = self.CONFIG.getint('listen', 'port')
-		self.LISTEN_VISIBLE = self.CONFIG.getint('listen', 'visible')
-		self.LISTEN_DEBUGINFO = self.CONFIG.getint('listen', 'debuginfo') if self.CONFIG.has_option('listen', 'debuginfo') else 0
-
-		self.GAE_PROFILE = self.CONFIG.get('google', 'profile')
-		self.GAE_CRLF = self.CONFIG.getint('google', 'crlf')
-		self.GAE_VALIDATE = self.CONFIG.getint('google', 'validate')
-		self.GAE_OBFUSCATE = self.CONFIG.getint('google', 'obfuscate') if self.CONFIG.has_option('google', 'obfuscate') else 0
-		self.GAE_USEFAKEHTTPS = self.CONFIG.getint('google', 'usefakehttps') if self.CONFIG.has_option('google', 'usefakehttps') else 0
-
-		self.PROXY_ENABLE = self.CONFIG.getint('proxy', 'enable')
-		self.PROXY_AUTODETECT = 0
-		self.PROXY_HOST = self.CONFIG.get('proxy', 'host')
-		self.PROXY_PORT = self.CONFIG.getint('proxy', 'port')
-		self.PROXY_USERNAME = self.CONFIG.get('proxy', 'username')
-		self.PROXY_PASSWROD = self.CONFIG.get('proxy', 'password')
-
-		if not self.PROXY_ENABLE and self.PROXY_AUTODETECT:
-			system_proxy = ProxyUtil.get_system_proxy()
-			if system_proxy and self.LISTEN_IP not in system_proxy:
-				_, username, password, address = ProxyUtil.parse_proxy(system_proxy)
-				proxyhost, _, proxyport = address.rpartition(':')
-				self.PROXY_ENABLE = 1
-				self.PROXY_USERNAME = username
-				self.PROXY_PASSWROD = password
-				self.PROXY_HOST = proxyhost
-				self.PROXY_PORT = int(proxyport)
-		if self.PROXY_ENABLE:
-			self.GOOGLE_MODE = 'https'
-			self.proxy = 'https://%s:%s@%s:%d' % (self.PROXY_USERNAME or '', self.PROXY_PASSWROD or '', self.PROXY_HOST, self.PROXY_PORT)
-		else:
-			self.proxy = ''
-
-		self.GOOGLE_MODE = self.CONFIG.get(self.GAE_PROFILE, 'mode')
-		self.GOOGLE_WINDOW = self.CONFIG.getint(self.GAE_PROFILE, 'window') if self.CONFIG.has_option(self.GAE_PROFILE, 'window') else 4
-		self.GOOGLE_HOSTS = [x for x in self.CONFIG.get(self.GAE_PROFILE, 'hosts').split('|') if x]
-		self.GOOGLE_SITES = tuple(x for x in self.CONFIG.get(self.GAE_PROFILE, 'sites').split('|') if x)
-
-		self.USERAGENT_ENABLE = self.CONFIG.getint('useragent', 'enable')
-		self.USERAGENT_STRING = self.CONFIG.get('useragent', 'string')
-		self.FETCHMAX_LOCAL = 3
-		self.FETCHMAX_SERVER = ''
 		
 	def info(self):
 		info = ''
 		info += '------------------------------------------------------\n'
 		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
-		info += 'Uvent Version	  : %s (pyuv/%s libuv/%s)\n' % (__import__('uvent').__version__, __import__('pyuv').__version__, __import__('pyuv').LIBUV_VERSION) if all(x in sys.modules for x in ('pyuv', 'uvent')) else ''
-		info += 'Listen Address	 : %s:%d\n' % (self.LISTEN_IP, self.LISTEN_PORT)
-		info += 'Local Proxy		: %s:%s\n' % (self.PROXY_HOST, self.PROXY_PORT) if self.PROXY_ENABLE else ''
-		info += 'Debug INFO		 : %s\n' % self.LISTEN_DEBUGINFO if self.LISTEN_DEBUGINFO else ''
-		info += 'GAE Mode		   : %s\n' % self.GOOGLE_MODE
-		info += 'GAE Profile		: %s\n' % self.GAE_PROFILE
-		info += 'GAE Validate	   : %s\n' % self.GAE_VALIDATE if self.GAE_VALIDATE else ''
-		info += 'GAE Obfuscate	  : %s\n' % self.GAE_OBFUSCATE if self.GAE_OBFUSCATE else ''
 		info += '------------------------------------------------------\n'
 		return info
 
