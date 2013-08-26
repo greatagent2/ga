@@ -30,6 +30,7 @@ except ImportError:
 import re
 import ConfigParser
 import hashlib
+import random
 
 class FileUtil(object):
 	@staticmethod
