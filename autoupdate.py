@@ -19,8 +19,7 @@ class FileUtil(object):
 				path = os.path.join(root,name)
 				newpath = path.replace(dir,'$path$')
 				regexpath = path.replace(dir,'.')
-				regex=ur"/  \.\\\\.git\\\/"
-				if re.search(regex, regexpath):
+				if regexpath.startswith('.\\.git'):
 					continue
 				else:
 					sha1v = FileUtil.sumfile(path)
