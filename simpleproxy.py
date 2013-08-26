@@ -1084,17 +1084,14 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		"""deploy fake cert to client"""
 		host, _, port = self.path.rpartition(':')
 		port = int(port)
-		certfile = CertUtil.get_cert(host)
 		logging.info('%s "PROCESS %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
 		self.__realconnection = None
 		self.wfile.write(b'HTTP/1.1 200 OK\r\n\r\n')
 		try:
 			if not http_util.ssl_validate and not http_util.ssl_obfuscate:
-				ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
+				ssl_sock = ssl.wrap_socket(self.connection, server_side=True)
 			else:
 				ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
-				ssl_context.use_privatekey_file(certfile)
-				ssl_context.use_certificate_file(certfile)
 				ssl_sock = SSLConnection(ssl_context, self.connection)
 				ssl_sock.set_accept_state()
 				ssl_sock.do_handshake()
