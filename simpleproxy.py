@@ -1101,22 +1101,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				need_switch = False
 				sample_hosts = random.sample(list(common.GOOGLE_HOSTS), min(4, len(common.GOOGLE_HOSTS)))
 				connect_timing = 0
-				for host in sample_hosts:
-					try:
-						start = time.time()
-						socket.create_connection((host, 443), timeout=2).close()
-						end = time.time()
-						connect_timing += end - start
-					except (socket.error, OSError):
-						# connect failed, need switch
-						connect_timing += 2
-						need_switch = True
-						break
-				average_timing = 1000 * connect_timing / len(sample_hosts)
-				if average_timing > 768:
-					# avg connect time large than 768 ms, need switch
-					need_switch = True
-				logging.info('speedtest google_cn iplist average_timing=%0.2f ms, need_switch=%r', average_timing, need_switch)
 				if need_switch:
 					common.GAE_PROFILE = 'google_hk'
 					common.GOOGLE_MODE = 'https'
