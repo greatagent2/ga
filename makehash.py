@@ -28,6 +28,10 @@ from simpleproxy import logging
 from simpleproxy import common as proxyconfig
 from common import sysconfig as common
 from common import config
+from common import __config__
+from common import __sha1__
+from common import __file__
+from common import __version__
 
 import os
 import sys
@@ -36,10 +40,6 @@ import thread
 import urllib2
 import random
 
-__config__   = 'autoupdate.ini'
-__sha1__   = 'sha1.ini'
-__file__	 = 'autoupdate.py'
-__version__ = '2.0.0'
 
 class FileUtil(object):
 	@staticmethod
