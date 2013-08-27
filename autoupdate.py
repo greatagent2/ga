@@ -89,6 +89,8 @@ class Updater(object):
 		output.close()
 		input = FileUtil.open(path,"rb")
 		sha1vv = FileUtil.get_file_sha1(input)
+		print sha1v.strip()
+		print sha1vv.strip()
 		input.close()
 		if sha1v.strip()==sha1vv.strip() :
 			print 'Verify	'+filename+'				OK!'
