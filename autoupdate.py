@@ -108,7 +108,7 @@ class Updater(object):
 		tmp2 = input.read()
 		input.close()
 		print 'Grabbing '+__sign__+'.....'
-		hash = self.netopen(self.server+'/'+__sign__)
+		hash = self.netopen('/'+__sign__)
 		print 'Verifing Hash Table.....'
 		ok = verify(tmp2,hash)
 		if not ok:
@@ -118,7 +118,7 @@ class Updater(object):
 
 	def update(self):
 		print "Show Server Version Message:"
-		print self.netopen(__versionfile__)
+		print self.netopen('/'+__versionfile__)
 		oldsha1 = self.old_file_sha1_ini
 		path = __sha1__+'.tmp'
 		FileUtil.if_has_file_remove(path)
