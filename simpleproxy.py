@@ -1069,7 +1069,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		elif not common.PROXY_ENABLE:
 			logging.debug('resolve common.GOOGLE_HOSTS domain=%r to iplist', common.GOOGLE_HOSTS)
 			if common.GAE_PROFILE == 'google_cn':
-				hosts = ('www.google.cn', 'www.g.cn')
+				hosts = ('www.google.cn', 'www.g.cn','www.guge.com','www.guge.cn','ditu.google.cn',"www.google.com","mail.google.com","www.android.com","ssl.google-analytics.com")
 				iplist = []
 				for host in hosts:
 					try:
@@ -1086,11 +1086,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				need_switch = False
 				sample_hosts = random.sample(list(common.GOOGLE_HOSTS), min(4, len(common.GOOGLE_HOSTS)))
 				connect_timing = 0
-				if need_switch:
-					common.GAE_PROFILE = 'google_hk'
-					common.GOOGLE_MODE = 'https'
-					http_util.max_window = common.GOOGLE_WINDOW = common.CONFIG.getint('google_hk', 'window')
-					common.GOOGLE_HOSTS = list(set(x for x in common.CONFIG.get(common.GAE_PROFILE, 'hosts').split('|') if x))
 			self._update_google_iplist()
 
 	def setup(self):
