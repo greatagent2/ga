@@ -68,8 +68,7 @@ class Updater(object):
 	def getfile(self,filename):
 		while 1:
 			try:
-				response = self.opener.open(self.server+filename)
-				file = response.read()
+				file = self.netopen(filename)
 				return file
 			except Exception as e:
 				print e
