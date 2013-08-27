@@ -88,10 +88,18 @@ class FileUtil(object):
 
 	@staticmethod
 	def open(path,type):
-		if (path.endswith(sysconfig.REGEX_ONLYW) and not type == "w")or type.endswith('b'):
-			return open(path,type)
+		if type.endswith('w') or type.startswith('w'):
+			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
+				return open(path,type)
+			else:
+				return open(path,type+"b")
+		elif type.endswith('r') or type.startswith('r'):
+			if path.endswith(sysconfig.REGEX_ONLYR)or type.endswith('b'):
+				return open(path,type)
+			else:
+				return open(path,type+"b")
 		else:
-			return open(path,type+"b")
+			return
 
 
 
@@ -131,6 +139,7 @@ class Common(object):
 		self.REGEX_START = tuple(x for x in self.CONFIG.get('regex', 'start').split('|') if x)
 		self.REGEX_END = tuple(x for x in self.CONFIG.get('regex', 'end').split('|') if x)
 		self.REGEX_ONLYW = tuple(x for x in self.CONFIG.get('regex', 'onlyw').split('|') if x)
+		self.REGEX_ONLYR = tuple(x for x in self.CONFIG.get('regex', 'onlyr').split('|') if x)
 		
 		random.shuffle(self.AUTOUPDATE_SERVER)
 
