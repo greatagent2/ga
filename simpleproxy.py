@@ -13,6 +13,8 @@ sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 sys.path += glob.glob('%s/lib/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 
 try:
+	if 'threading' in sys.modules:
+		del sys.modules['threading']
 	import gevent
 	import gevent.socket
 	import gevent.monkey
@@ -192,15 +194,15 @@ class Common(object):
 	def info(self):
 		info = ''
 		info += '------------------------------------------------------\n'
-		info += 'GreatAgent SimpleProxy Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
+		info += 'GreatAgent SimpleProxy Version	: %s \n' % (__version__)
 		info += 'Uvent Version	  : %s (pyuv/%s libuv/%s)\n' % (__import__('uvent').__version__, __import__('pyuv').__version__, __import__('pyuv').LIBUV_VERSION) if all(x in sys.modules for x in ('pyuv', 'uvent')) else ''
 		info += 'Listen Address	 : %s:%d\n' % (self.LISTEN_IP, self.LISTEN_PORT)
 		info += 'Local Proxy		: %s:%s\n' % (self.PROXY_HOST, self.PROXY_PORT) if self.PROXY_ENABLE else ''
 		info += 'Debug INFO		 : %s\n' % self.LISTEN_DEBUGINFO if self.LISTEN_DEBUGINFO else ''
-		info += 'GAE Mode		   : %s\n' % self.GOOGLE_MODE
-		info += 'GAE Profile		: %s\n' % self.GAE_PROFILE
-		info += 'GAE Validate	   : %s\n' % self.GAE_VALIDATE if self.GAE_VALIDATE else ''
-		info += 'GAE Obfuscate	  : %s\n' % self.GAE_OBFUSCATE if self.GAE_OBFUSCATE else ''
+		info += 'GOOGLE Mode		   : %s\n' % self.GOOGLE_MODE
+		info += 'GOOGLE Profile		: %s\n' % self.GAE_PROFILE
+		info += 'GOOGLE Validate	   : %s\n' % self.GAE_VALIDATE if self.GAE_VALIDATE else ''
+		info += 'GOOGLE Obfuscate	  : %s\n' % self.GAE_OBFUSCATE if self.GAE_OBFUSCATE else ''
 		info += '------------------------------------------------------\n'
 		return info
 

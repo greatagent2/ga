@@ -12,6 +12,8 @@ sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 sys.path += glob.glob('%s/lib/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 
 try:
+	if 'threading' in sys.modules:
+		del sys.modules['threading']
 	import gevent
 	import gevent.socket
 	import gevent.monkey
@@ -44,24 +46,31 @@ import urllib2
 import random
 
 def makehash(dir,topdown=True):
-	FileUtil.if_has_file_remove(__sha1__)
-	sha1 = Config(__sha1__)
-	for root, dirs, files in os.walk(dir, topdown):
-		for name in files:
-			path = os.path.join(root,name)
-			newpath = path.replace(dir,'$path$')
-			regexpath = path.replace(dir,'.')
-			if regexpath.startswith(common.REGEX_START) or regexpath.endswith(common.REGEX_END):
-				continue
-			else:
-				sha1v = FileUtil.sumfile(path)
-				sha1.writeconfig('FILE_SHA1',newpath,sha1v)
-	return sha1
+	try : 
+		print 'Generating '+__sha1__+' table...'
+		FileUtil.if_has_file_remove(__sha1__)
+		sha1 = Config(__sha1__)
+		for root, dirs, files in os.walk(dir, topdown):
+			for name in files:
+				path = os.path.join(root,name)
+				newpath = path.replace(dir,'$path$')
+				regexpath = path.replace(dir,'.')
+				if regexpath.startswith(common.REGEX_START) or regexpath.endswith(common.REGEX_END):
+					continue
+				else:
+					sha1v = FileUtil.sumfile(path)
+					sha1.writeconfig('FILE_SHA1',newpath,sha1v)
+		print 'DONE generate '+__sha1__+' table!'
+		return sha1
+	except Exception as e:
+		print 'FAIL to generate '+__sha1__+' table!'
+		print e
+		sys.exit()
 
 def main():
 	dir = FileUtil.cur_file_dir()
 	os.chdir(dir)
-	sys.stdout.write(common.info())
+	#sys.stdout.write(common.info())
 	makehash(dir)
 
 

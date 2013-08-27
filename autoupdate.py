@@ -11,6 +11,8 @@ import glob
 sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 
 try:
+	if 'threading' in sys.modules:
+		del sys.modules['threading']
 	import gevent
 	import gevent.socket
 	import gevent.monkey
@@ -32,8 +34,10 @@ from common import Config
 from common import config
 from common import __config__
 from common import __sha1__
+from common import __sign__
 from common import __file__
 from common import __version__
+from common import __versionfile__
 from makehash import makehash
 from sign import verify
 from sign import sign
@@ -56,6 +60,10 @@ class Updater(object):
 		self.server = str(serverurl)
 		self.old_file_sha1_ini = old_file_sha1_ini
 		self.dir = dir
+	def netopen(self,filename):
+		file = self.opener.open(self.server+filename).read()
+		print 'Get	'+filename+'		OK!'
+		return file
 	def getfile(self,filename):
 		while 1:
 			try:
@@ -68,43 +76,53 @@ class Updater(object):
 	def writefile(self,filename,sha1v):
 		file = self.getfile(filename)
 		path = self.dir+filename
-		input = FileUtil.open(path,"r")
-		oldfile = input.read()
-		input.close()
+		if os.path.isfile(path):
+			input = FileUtil.open(path,"r")
+			oldfile = input.read()
+			input.close()
+		else:
+			oldfile = None
 		output = FileUtil.open(path,"wb")
 		output.write(file)
-		print 'Update	'+filename+'	OK!'
+		print 'Update	'+filename+'		OK!'
 		output.close()
 		input = FileUtil.open(path,"r")
 		sha1vv = FileUtil.get_file_sha1(input)
 		input.close()
 		if sha1v == sha1vv :
-			print 'Verify	'+filename+'	OK!'
+			print 'Verify	'+filename+'		OK!'
 		else:
-			output = FileUtil.open(path,"wb")
-			output.write(oldfile)
+			if oldfile:
+				output = FileUtil.open(path,"wb")
+				output.write(oldfile)
+				output.close()
 			print 'Recover	'+filename+'	OK!'
-			output.close()
-	def update(self):
-		oldsha1 = self.old_file_sha1_ini
-		path = 'sha1.ini.tmp'
-		FileUtil.if_has_file_remove(path)
+			
+	def getnewsha1(self,path,oldsha1):
+		print 'Grabbing '+__sha1__+'.....'
 		output = FileUtil.open(path,"wb")
-		tmp = self.opener.open(self.server+'/sha1.ini')
-		output.write(tmp.read()) 
+		output.write(self.netopen(__sha1__)) 
 		output.close()
 		input = FileUtil.open(path,"r")
 		tmp2 = input.read()
 		input.close()
-		hash = self.opener.open(self.server+'/sha1.sign').read()
-		print sign(tmp2)
-		print hash
+		print 'Grabbing '+__sign__+'.....'
+		hash = self.opener.open(self.server+__sign__).read()
+		print 'Verifing Hash Table.....'
 		ok = verify(tmp2,hash)
 		if not ok:
 			print 'Verify Failed!'
-			return
+			sys.exit()
 		print 'Verify Successful1!'
-		newsha1 = Config('sha1.ini.tmp')
+
+	def update(self):
+		print "Show Server Version Message:"
+		print self.netopen(__versionfile__)
+		oldsha1 = self.old_file_sha1_ini
+		path = __sha1__+'.tmp'
+		FileUtil.if_has_file_remove(path)
+		self.getnewsha1(path,oldsha1)
+		newsha1 = Config(path)
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):
 				path = path.replace('$path$','')

@@ -12,24 +12,26 @@ sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 sys.path += glob.glob('%s/lib/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 import rsa
 import base92
+import time
 
 try:
+	if 'threading' in sys.modules:
+		del sys.modules['threading']
 	import gevent
 	import gevent.socket
 	import gevent.monkey
 	gevent.monkey.patch_all()
 except (ImportError, SystemError):
 	gevent = None
-try:
-	import OpenSSL
-except ImportError:
-	OpenSSL = None
+
 
 from common import sysconfig as common
 from common import FileUtil
 from common import Config
 from common import config
+from common import __versionfile__
 from common import __config__
+from common import __git__
 from common import __pubkey__
 from common import __prikey__
 from common import __author__
@@ -72,15 +74,50 @@ def do(message,filename):
 	ok = verify(message,input.read())
 	input.close()
 	return ok
+	
+def version():
+	input = FileUtil.open(__git__,"r")
+	gits = input.read().replace('\r\n','\n').split('\n')
+	input.close()
+	message  = "=============================="
+	message += "\r\n"
+	message += "Name:"+__names__
+	message += "\r\n"
+	message += "Author:"+__author__
+	message += "\r\n"
+	message += "Version:"+__version__
+	message += "\r\n"
+	message += "Now Git Version:"
+	message += str(len(gits))
+	message += "\r\n"
+	message += "Last Git Commit:"
+	message += gits[len(gits)-2]
+	message += "\r\n"
+	message += "Update Time:"
+	message += time.strftime("%Y-%m-%d %X",time.localtime())
+	message += "\r\n"
+	message += "=============================="
+	message += "\r\n"
+	out = FileUtil.open(__versionfile__,"w")
+	out.write(message)
+	out.close
+	return message
 
 def main():
 	dir = FileUtil.cur_file_dir()
-	print dir
+	#print 'now dir : '+dir
 	os.chdir(dir)
 	input = open(__sha1__,"r")
 	sha1 = input.read()
 	input.close()
-	print do(sha1,__sign__)
+	print 'Now Signing sha1.ini ...'
+	if do(sha1,__sign__):
+		print 'Sign OK!'
+		print version()
+	else:
+		print 'Sign Fail!'
+		sys.exit()
+
 
 
 

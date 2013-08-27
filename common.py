@@ -6,8 +6,10 @@
 __config__   = 'autoupdate.ini'
 __sha1__   = 'sha1.ini'
 __sign__   = 'sha1.sign'
-__pubkey__   = '../greatagent.pubkey'
-__prikey__   = '../greatagent.prikey'
+__git__   = 'git.txt'
+__versionfile__ = 'version'
+__pubkey__   = '../greatagent2.pubkey'
+__prikey__   = '../greatagent2.prikey'
 __author__   = 'Wang Wei Qiang <wwqgtxx@gmail.com>'
 __names__   = 'GreatAgent'
 __version__ = '2.0.0'
@@ -21,6 +23,8 @@ sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 sys.path += glob.glob('%s/lib/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 
 try:
+	if 'threading' in sys.modules:
+		del sys.modules['threading']
 	import gevent
 	import gevent.socket
 	import gevent.monkey
@@ -135,7 +139,7 @@ class Common(object):
 		info = ''
 		info += '------------------------------------------------------\n'
 		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
-		info += 'Server          : %s\n' % '|'.join(self.AUTOUPDATE_SERVER)
+		info += 'Update Server      : %s\n' % '|'.join(self.AUTOUPDATE_SERVER)
 		info += '------------------------------------------------------\n'
 		return info
 
