@@ -61,6 +61,7 @@ class Updater(object):
 		self.old_file_sha1_ini = old_file_sha1_ini
 		self.dir = dir
 	def netopen(self,filename):
+		print 'Getting	'+filename+'	.....'
 		file = self.opener.open(self.server+filename).read()
 		print 'Get	'+filename+'		OK!'
 		return file
@@ -101,13 +102,13 @@ class Updater(object):
 	def getnewsha1(self,path,oldsha1):
 		print 'Grabbing '+__sha1__+'.....'
 		output = FileUtil.open(path,"wb")
-		output.write(self.netopen(__sha1__)) 
+		output.write(self.netopen('/'+__sha1__)) 
 		output.close()
 		input = FileUtil.open(path,"r")
 		tmp2 = input.read()
 		input.close()
 		print 'Grabbing '+__sign__+'.....'
-		hash = self.opener.open(self.server+__sign__).read()
+		hash = self.netopen(self.server+'/'+__sign__)
 		print 'Verifing Hash Table.....'
 		ok = verify(tmp2,hash)
 		if not ok:
