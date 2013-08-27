@@ -87,7 +87,7 @@ class Updater(object):
 		output.write(file)
 		print 'Update	'+filename+'				OK!'
 		output.close()
-		input = FileUtil.open(path,"rb")
+		input = FileUtil.open(path,"r")
 		sha1vv = FileUtil.get_file_sha1(input)
 		input.close()
 		if sha1v == sha1vv :
