@@ -88,7 +88,7 @@ class FileUtil(object):
 
 	@staticmethod
 	def open(path,type):
-		if path.endswith(sysconfig.REGEX_ONLYW) and not type == "w":
+		if (path.endswith(sysconfig.REGEX_ONLYW) and not type == "w")or type.endswith('b'):
 			return open(path,type)
 		else:
 			return open(path,type+"b")

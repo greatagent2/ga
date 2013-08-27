@@ -61,7 +61,7 @@ class Updater(object):
 		self.old_file_sha1_ini = old_file_sha1_ini
 		self.dir = dir
 	def netopen(self,filename):
-		print 'Getting	'+filename+'	.....'
+		print 'Getting	'+filename+'.....'
 		file = self.opener.open(self.server+filename).read()
 		print 'Get	'+filename+'		OK!'
 		return file
