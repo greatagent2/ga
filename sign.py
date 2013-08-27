@@ -31,16 +31,19 @@ from common import Config
 from common import config
 from common import __config__
 from common import __sha1__
+from common import __sign__
 from common import __file__
 from common import __version__
 
 def sign(message):
+	#message = base92.encode(message)
 	privatefile = open('../greatagent.prikey')
 	keydata = privatefile.read()
 	prikey = rsa.PrivateKey.load_pkcs1(keydata)
 	signature = rsa.sign(message, prikey, 'SHA-1')
 	return base92.encode(signature)
 def verify(message,signature):
+	#message = base92.encode(message)
 	signature = base92.decode(signature)
 	publicfile = open('../greatagent.pubkey')
 	keydata = publicfile.read()
@@ -56,12 +59,12 @@ def make():
 	print '----------------------------------'
 	print privkey.save_pkcs1()
 	
-def do(message):
-	FileUtil.if_has_file_remove('sha1.sign')
-	output = open('sha1.sign',"w+b")
+def do(message,filename):
+	FileUtil.if_has_file_remove(filename)
+	output = open(filename,"wb")
 	output.write(sign(message))
 	output.close()
-	input = open('sha1.sign',"rb")
+	input = open(filename,"rb")
 	ok = verify(message,input.read())
 	input.close()
 	return ok
@@ -70,7 +73,10 @@ def main():
 	dir = FileUtil.cur_file_dir()
 	print dir
 	os.chdir(dir)
-	print do('wwqgtxx')
+	input = open(__sha1__,"r")
+	sha1 = input.read()
+	input.close()
+	print do(sha1,__sign__)
 
 
 

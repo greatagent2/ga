@@ -5,6 +5,7 @@
 
 __config__   = 'autoupdate.ini'
 __sha1__   = 'sha1.ini'
+__sign__   = 'sha1.sign'
 __file__	 = 'autoupdate.py'
 __version__ = '2.0.0'
 
