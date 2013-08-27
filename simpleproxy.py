@@ -209,6 +209,136 @@ class Common(object):
 
 common = Common()
 
+class DNSUtil(object):
+	"""
+	http://gfwrev.blogspot.com/2009/11/gfwdns.html
+	http://zh.wikipedia.org/wiki/域名服务器缓存污染
+	http://support.microsoft.com/kb/241352
+	"""
+	blacklist = set(['1.1.1.1',
+					 '255.255.255.255',
+					 # for google+
+					 '74.125.127.102',
+					 '74.125.155.102',
+					 '74.125.39.102',
+					 '74.125.39.113',
+					 '209.85.229.138',
+					 # other ip list
+					 '4.36.66.178',
+					 '8.7.198.45',
+					 '37.61.54.158',
+					 '46.82.174.68',
+					 '59.24.3.173',
+					 '64.33.88.161',
+					 '64.33.99.47',
+					 '64.66.163.251',
+					 '65.104.202.252',
+					 '65.160.219.113',
+					 '66.45.252.237',
+					 '72.14.205.104',
+					 '72.14.205.99',
+					 '78.16.49.15',
+					 '93.46.8.89',
+					 '128.121.126.139',
+					 '159.106.121.75',
+					 '169.132.13.103',
+					 '192.67.198.6',
+					 '202.106.1.2',
+					 '202.181.7.85',
+					 '203.161.230.171',
+					 '203.98.7.65',
+					 '207.12.88.98',
+					 '208.56.31.43',
+					 '209.145.54.50',
+					 '209.220.30.174',
+					 '209.36.73.33',
+					 '209.85.229.138',
+					 '211.94.66.147',
+					 '213.169.251.35',
+					 '216.221.188.182',
+					 '216.234.179.13',
+					 '243.185.187.3',
+					 '243.185.187.39'])
+	max_retry = 3
+	max_wait = 3
+
+	@staticmethod
+	def _reply_to_iplist(data):
+		assert isinstance(data, bytes)
+		if bytes is str:
+			iplist = ['.'.join(str(ord(x)) for x in s) for s in re.findall('\xc0.\x00\x01\x00\x01.{6}(.{4})', data) if all(ord(x) <= 255 for x in s)]
+		else:
+			iplist = ['.'.join(str(x) for x in s) for s in re.findall(b'\xc0.\x00\x01\x00\x01.{6}(.{4})', data) if all(x <= 255 for x in s)]
+		return iplist
+
+	@staticmethod
+	def is_bad_reply(data):
+		assert isinstance(data, bytes)
+		if bytes is str:
+			iplist = ['.'.join(str(ord(x)) for x in s) for s in re.findall(b'\xc0.\x00\x01\x00\x01.{6}(.{4})', data)+re.findall(b'\x00\x01\x00\x01.{6}(.{4})', data) if all(ord(x) <= 255 for x in s)]
+		else:
+			iplist = ['.'.join(str(x) for x in s) for s in re.findall(b'\xc0.\x00\x01\x00\x01.{6}(.{4})', data)+re.findall(b'\x00\x01\x00\x01.{6}(.{4})', data) if all(x <= 255 for x in s)]
+		return any(x in DNSUtil.blacklist for x in iplist)
+
+	@staticmethod
+	def _remote_resolve(dnsserver, qname, timeout=None):
+		if isinstance(dnsserver, tuple):
+			dnsserver, port = dnsserver
+		else:
+			port = 53
+		for i in range(DNSUtil.max_retry):
+			data = os.urandom(2)
+			data += b'\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+			data += ''.join(chr(len(x))+x for x in qname.split('.')).encode()
+			data += b'\x00\x00\x01\x00\x01'
+			address_family = socket.AF_INET6 if ':' in dnsserver else socket.AF_INET
+			sock = None
+			try:
+				if i < DNSUtil.max_retry-1:
+					# UDP mode query
+					sock = socket.socket(family=address_family, type=socket.SOCK_DGRAM)
+					sock.settimeout(timeout)
+					sock.sendto(data, (dnsserver, port))
+					for i in range(DNSUtil.max_wait):
+						data = sock.recv(512)
+						if data and not DNSUtil.is_bad_reply(data):
+							return data[2:]
+						else:
+							logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return poisoned udp data=%r', qname, dnsserver, data)
+				else:
+					# TCP mode query
+					sock = socket.socket(family=address_family, type=socket.SOCK_STREAM)
+					sock.settimeout(timeout)
+					sock.connect((dnsserver, port))
+					data = struct.pack('>h', len(data)) + data
+					sock.send(data)
+					rfile = sock.makefile('rb', 512)
+					data = rfile.read(2)
+					if not data:
+						logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp header data=%r', qname, dnsserver, data)
+						continue
+					data = rfile.read(struct.unpack('>h', data)[0])
+					if data and not DNSUtil.is_bad_reply(data):
+						return data[2:]
+					else:
+						logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp data=%r', qname, dnsserver, data)
+			except (socket.error, ssl.SSLError, OSError) as e:
+				if e.args[0] in (errno.ETIMEDOUT, 'timed out'):
+					continue
+			except Exception as e:
+				raise
+			finally:
+				if sock:
+					sock.close()
+
+	@staticmethod
+	def remote_resolve(dnsserver, qname, timeout=None):
+		data = DNSUtil._remote_resolve(dnsserver, qname, timeout)
+		iplist = DNSUtil._reply_to_iplist(data or b'')
+		return iplist
+
+
+
 class CertUtil(object):
 	"""CertUtil module, based on mitmproxy"""
 
