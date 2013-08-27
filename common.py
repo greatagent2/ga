@@ -73,7 +73,7 @@ class FileUtil(object):
 
 	@staticmethod
 	def sumfile(fpath):
-		input = open(fpath)
+		input = FileUtil.open(fpath,'rb')
 		sum = FileUtil.get_file_sha1(input)
 		input.close()
 		return sum
