@@ -91,9 +91,9 @@ class Updater(object):
 		sha1vv = FileUtil.get_file_sha1(input)
 		input.close()
 		if sha1v.strip()==sha1vv.strip() :
-			print 'Verify	'+filename+'				Fail!'
-		else:
 			print 'Verify	'+filename+'				OK!'
+		else:
+			print 'Verify	'+filename+'				Fail!'
 			if oldfile:
 				output = FileUtil.open(path,"wb")
 				output.write(oldfile)
