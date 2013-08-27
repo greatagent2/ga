@@ -55,6 +55,84 @@ HAS_PYPY = hasattr(sys, 'pypy_version_info')
 NetWorkIOError = (socket.error, ssl.SSLError, OSError) if not OpenSSL else (socket.error, ssl.SSLError, OpenSSL.SSL.Error, OSError)
 
 
+
+class Logging(type(sys)):
+	CRITICAL = 50
+	FATAL = CRITICAL
+	ERROR = 40
+	WARNING = 30
+	WARN = WARNING
+	INFO = 20
+	DEBUG = 10
+	NOTSET = 0
+
+	def __init__(self, *args, **kwargs):
+		self.level = self.__class__.INFO
+		self.__set_error_color = lambda: None
+		self.__set_warning_color = lambda: None
+		self.__set_debug_color = lambda: None
+		self.__reset_color = lambda: None
+		if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
+			if os.name == 'nt':
+				import ctypes
+				SetConsoleTextAttribute = ctypes.windll.kernel32.SetConsoleTextAttribute
+				GetStdHandle = ctypes.windll.kernel32.GetStdHandle
+				self.__set_error_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x04)
+				self.__set_warning_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x06)
+				self.__set_debug_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x002)
+				self.__reset_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x07)
+			elif os.name == 'posix':
+				self.__set_error_color = lambda: sys.stderr.write('\033[31m')
+				self.__set_warning_color = lambda: sys.stderr.write('\033[33m')
+				self.__set_debug_color = lambda: sys.stderr.write('\033[32m')
+				self.__reset_color = lambda: sys.stderr.write('\033[0m')
+
+	@classmethod
+	def getLogger(cls, *args, **kwargs):
+		return cls(*args, **kwargs)
+
+	def basicConfig(self, *args, **kwargs):
+		self.level = int(kwargs.get('level', self.__class__.INFO))
+		if self.level > self.__class__.DEBUG:
+			self.debug = self.dummy
+
+	def log(self, level, fmt, *args, **kwargs):
+		sys.stderr.write('%s - [%s] %s\n' % (level, time.ctime()[4:-5], fmt % args))
+
+	def dummy(self, *args, **kwargs):
+		pass
+
+	def debug(self, fmt, *args, **kwargs):
+		self.__set_debug_color()
+		self.log('DEBUG', fmt, *args, **kwargs)
+		self.__reset_color()
+
+	def info(self, fmt, *args, **kwargs):
+		self.log('INFO', fmt, *args)
+
+	def warning(self, fmt, *args, **kwargs):
+		self.__set_warning_color()
+		self.log('WARNING', fmt, *args, **kwargs)
+		self.__reset_color()
+
+	def warn(self, fmt, *args, **kwargs):
+		self.warning(fmt, *args, **kwargs)
+
+	def error(self, fmt, *args, **kwargs):
+		self.__set_error_color()
+		self.log('ERROR', fmt, *args, **kwargs)
+		self.__reset_color()
+
+	def exception(self, fmt, *args, **kwargs):
+		self.error(fmt, *args, **kwargs)
+		traceback.print_exc(file=sys.stderr)
+
+	def critical(self, fmt, *args, **kwargs):
+		self.__set_error_color()
+		self.log('CRITICAL', fmt, *args, **kwargs)
+		self.__reset_color()
+logging = sys.modules['logging'] = Logging('logging')
+
 class Common(object):
 	"""Global Config Object"""
 
@@ -109,6 +187,7 @@ class Common(object):
 		self.USERAGENT_STRING = self.CONFIG.get('useragent', 'string')
 		self.FETCHMAX_LOCAL = 3
 		self.FETCHMAX_SERVER = ''
+		logging.basicConfig(level=logging.DEBUG if self.LISTEN_DEBUGINFO else logging.INFO, format='%(levelname)s - %(asctime)s %(message)s', datefmt='[%b %d %H:%M:%S]')
 		
 	def info(self):
 		info = ''
@@ -310,82 +389,6 @@ class CertUtil(object):
             os.makedirs(certdir)
 
 
-class Logging(type(sys)):
-	CRITICAL = 50
-	FATAL = CRITICAL
-	ERROR = 40
-	WARNING = 30
-	WARN = WARNING
-	INFO = 20
-	DEBUG = 10
-	NOTSET = 0
-
-	def __init__(self, *args, **kwargs):
-		self.level = self.__class__.WARNING
-		self.__set_error_color = lambda: None
-		self.__set_warning_color = lambda: None
-		self.__set_debug_color = lambda: None
-		self.__reset_color = lambda: None
-		if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
-			if os.name == 'nt':
-				import ctypes
-				SetConsoleTextAttribute = ctypes.windll.kernel32.SetConsoleTextAttribute
-				GetStdHandle = ctypes.windll.kernel32.GetStdHandle
-				self.__set_error_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x04)
-				self.__set_warning_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x06)
-				self.__set_debug_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x002)
-				self.__reset_color = lambda: SetConsoleTextAttribute(GetStdHandle(-11), 0x07)
-			elif os.name == 'posix':
-				self.__set_error_color = lambda: sys.stderr.write('\033[31m')
-				self.__set_warning_color = lambda: sys.stderr.write('\033[33m')
-				self.__set_debug_color = lambda: sys.stderr.write('\033[32m')
-				self.__reset_color = lambda: sys.stderr.write('\033[0m')
-
-	@classmethod
-	def getLogger(cls, *args, **kwargs):
-		return cls(*args, **kwargs)
-
-	def basicConfig(self, *args, **kwargs):
-		self.level = int(kwargs.get('level', self.__class__.INFO))
-		if self.level > self.__class__.DEBUG:
-			self.debug = self.dummy
-
-	def log(self, level, fmt, *args, **kwargs):
-		sys.stderr.write('%s - [%s] %s\n' % (level, time.ctime()[4:-5], fmt % args))
-
-	def dummy(self, *args, **kwargs):
-		pass
-
-	def debug(self, fmt, *args, **kwargs):
-		self.__set_debug_color()
-		self.log('DEBUG', fmt, *args, **kwargs)
-		self.__reset_color()
-
-	def info(self, fmt, *args, **kwargs):
-		self.log('INFO', fmt, *args)
-
-	def warning(self, fmt, *args, **kwargs):
-		self.__set_warning_color()
-		self.log('WARNING', fmt, *args, **kwargs)
-		self.__reset_color()
-
-	def warn(self, fmt, *args, **kwargs):
-		self.warning(fmt, *args, **kwargs)
-
-	def error(self, fmt, *args, **kwargs):
-		self.__set_error_color()
-		self.log('ERROR', fmt, *args, **kwargs)
-		self.__reset_color()
-
-	def exception(self, fmt, *args, **kwargs):
-		self.error(fmt, *args, **kwargs)
-		traceback.print_exc(file=sys.stderr)
-
-	def critical(self, fmt, *args, **kwargs):
-		self.__set_error_color()
-		self.log('CRITICAL', fmt, *args, **kwargs)
-		self.__reset_color()
-logging = sys.modules['logging'] = Logging('logging')
 
 gevent_wait_read = gevent.socket.wait_read if 'gevent.socket' in sys.modules else lambda fd,t: select.select([fd], [], [fd], t)
 gevent_wait_write = gevent.socket.wait_write if 'gevent.socket' in sys.modules else lambda fd,t: select.select([], [fd], [fd], t)
@@ -819,8 +822,6 @@ class HTTPUtil(object):
 	def create_connection_withproxy(self, address, timeout=None, source_address=None, proxy=None):
 		assert isinstance(proxy, str)
 		host, port = address
-		logging.debug('create_connection_withproxy connect (%r, %r)', host, port)
-		_, username, password, address = ProxyUtil.parse_proxy(proxy or self.proxy)
 		try:
 			try:
 				self.dns_resolve(host)
@@ -866,7 +867,6 @@ class HTTPUtil(object):
 								if pongcallback:
 									try:
 										#remote_addr = '%s:%s'%remote.getpeername()[:2]
-										#logging.debug('call remote=%s pongcallback=%s', remote_addr, pongcallback)
 										pongcallback()
 									except Exception as e:
 										logging.warning('remote=%s pongcallback=%s failed: %s', remote, pongcallback, e)
@@ -998,7 +998,6 @@ class HTTPUtil(object):
 						crlf = 0
 					return self._request(ssl_sock or sock, method, path, self.protocol_version, headers, payload, bufsize=bufsize, crlf=crlf, return_sock=return_sock)
 			except Exception as e:
-				logging.debug('request "%s %s" failed:%s', method, url, e)
 				if ssl_sock:
 					ssl_sock.close()
 				if sock:
@@ -1062,12 +1061,12 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				need_resolve_remote += list(common.GOOGLE_HOSTS)
 			for dnsserver in ('8.8.8.8', '8.8.4.4', '114.114.114.114', '114.114.115.115'):
 				for domain in need_resolve_remote:
-					logging.info('resolve remote domain=%r from dnsserver=%r', domain, dnsserver)
+					logging.debug('resolve remote domain=%r from dnsserver=%r', domain, dnsserver)
 					try:
 						iplist = DNSUtil.remote_resolve(dnsserver, domain, timeout=3)
 						if iplist:
 							google_ipmap.setdefault(domain, []).extend(iplist)
-							logging.info('resolve remote domain=%r to iplist=%s', domain, google_ipmap[domain])
+							logging.debug('resolve remote domain=%r to iplist=%s', domain, google_ipmap[domain])
 					except (socket.error, OSError) as e:
 						logging.exception('resolve remote domain=%r dnsserver=%r failed: %s', domain, dnsserver, e)
 			common.GOOGLE_HOSTS = list(set(sum(list(google_ipmap.values()), [])))
@@ -1075,7 +1074,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				logging.error('resolve %s domain return empty! try remote dns resovle!', common.GAE_PROFILE)
 				common.GOOGLE_HOSTS = common.CONFIG.get(common.GAE_PROFILE, 'hosts').split('|')
 				#sys.exit(-1)
-		logging.info('resolve common.GOOGLE_HOSTS domain to iplist=%r', common.GOOGLE_HOSTS)
+		logging.debug('resolve common.GOOGLE_HOSTS domain to iplist=%r', common.GOOGLE_HOSTS)
 
 	def first_run(self):
 		"""GAEProxyHandler setup, init domain/iplist map"""
@@ -1083,7 +1082,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			for appid in common.GAE_APPIDS:
 				http_util.dns['%s.appspot.com' % appid] = list(set(common.GOOGLE_HOSTS))
 		elif not common.PROXY_ENABLE:
-			logging.info('resolve common.GOOGLE_HOSTS domain=%r to iplist', common.GOOGLE_HOSTS)
+			logging.debug('resolve common.GOOGLE_HOSTS domain=%r to iplist', common.GOOGLE_HOSTS)
 			if common.GAE_PROFILE == 'google_cn':
 				hosts = ('www.google.cn', 'www.g.cn')
 				iplist = []
@@ -1169,7 +1168,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			response = http_util.request(self.command, self.path, payload, self.headers, crlf=common.GAE_CRLF)
 			if not response:
 				return
-			logging.info('%s "FWD %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
+			logging.debug('%s "FWD %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
 			if response.status in (400, 405):
 				common.GAE_CRLF = 0
 			self.wfile.write(('HTTP/1.1 %s\r\n%s\r\n' % (response.status, ''.join('%s: %s\r\n' % (k.title(), v) for k, v in response.getheaders() if k.title() != 'Transfer-Encoding'))))
@@ -1204,7 +1203,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		"""socket forward for http CONNECT command"""
 		host, _, port = self.path.rpartition(':')
 		port = int(port)
-		logging.info('%s "FWD %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
+		logging.debug('%s "FWD %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
 		#http_headers = ''.join('%s: %s\r\n' % (k, v) for k, v in self.headers.items())
 		if not common.PROXY_ENABLE:
 			self.wfile.write(b'HTTP/1.1 200 OK\r\n\r\n')
@@ -1243,7 +1242,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		host, _, port = self.path.rpartition(':')
 		port = int(port)
 		certfile = CertUtil.get_cert(host)
-		logging.info('%s "PROCESS %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
+		logging.debug('%s "PROCESS %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
 		self.__realconnection = None
 		self.wfile.write(b'HTTP/1.1 200 OK\r\n\r\n')
 		try:
