@@ -41,6 +41,8 @@ import ConfigParser
 import hashlib
 import random
 
+import rsa,base92,pyasn1
+
 class FileUtil(object):
 	@staticmethod
 	def getfile(filename):
@@ -147,7 +149,7 @@ class Common(object):
 	def info(self):
 		info = ''
 		info += '------------------------------------------------------\n'
-		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'))
+		info += 'GreatAgent Version	: %s (python/%s %spyopenssl/%s rsa/%s rsa/%s PyASN1/%s base92/%s)\n' % (__version__, sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'),rsa.__version__,pyasn1.__version__,base92.__version__)
 		info += 'Update Server      : %s\n' % '|'.join(self.AUTOUPDATE_SERVER)
 		info += '------------------------------------------------------\n'
 		return info
