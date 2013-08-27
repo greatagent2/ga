@@ -132,8 +132,8 @@ class CertUtil(object):
     """CertUtil module, based on mitmproxy"""
 
     ca_vendor = 'GoAgent'
-    ca_keyfile = 'simpleproxy\\CA.crt'
-    ca_certdir = 'simpleproxy\\certs'
+    ca_keyfile = 'simpleproxy/CA.crt'
+    ca_certdir = 'simpleproxy/certs'
     ca_lock = threading.Lock()
 
     @staticmethod
