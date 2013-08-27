@@ -79,6 +79,13 @@ class FileUtil(object):
 		elif os.path.isfile(path):
 			return os.path.dirname(path)
 
+	@staticmethod
+	def open(path,type):
+		if path.endswith(sysconfig.REGEX_ONLYW):
+			return open(path,type)
+		else:
+			return open(path,type+"b")
+
 
 
 class Config(object):
@@ -94,7 +101,7 @@ class Config(object):
 		if not self.CONFIG.has_section(section):
 			self.CONFIG.add_section(section)
 		self.CONFIG.set(section,option,str)
-		f = open(FileUtil.getfile(self.FILENAME),'w') 
+		f = FileUtil.open(FileUtil.getfile(self.FILENAME),'w') 
 		self.CONFIG.write(f)
 		f.close()
 	
@@ -114,7 +121,9 @@ class Common(object):
 		self.CONFIG = config.CONFIG
 		
 		self.AUTOUPDATE_SERVER = self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|')
-		self.REGEX_PATH = tuple(x for x in self.CONFIG.get('regex', 'path').split('|') if x)
+		self.REGEX_START = tuple(x for x in self.CONFIG.get('regex', 'start').split('|') if x)
+		self.REGEX_END = tuple(x for x in self.CONFIG.get('regex', 'end').split('|') if x)
+		self.REGEX_ONLYW = tuple(x for x in self.CONFIG.get('regex', 'onlyw').split('|') if x)
 		
 		random.shuffle(self.AUTOUPDATE_SERVER)
 

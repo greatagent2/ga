@@ -45,7 +45,7 @@ def sign(message):
 def verify(message,signature):
 	#message = base92.encode(message)
 	signature = base92.decode(signature)
-	publicfile = open('../greatagent.pubkey')
+	publicfile = FileUtil.open('../greatagent.pubkey','r')
 	keydata = publicfile.read()
 	pubkey = rsa.PublicKey.load_pkcs1(keydata)
 	try:
@@ -61,10 +61,10 @@ def make():
 	
 def do(message,filename):
 	FileUtil.if_has_file_remove(filename)
-	output = open(filename,"wb")
+	output = FileUtil.open(filename,"w")
 	output.write(sign(message))
 	output.close()
-	input = open(filename,"rb")
+	input = FileUtil.open(filename,"r")
 	ok = verify(message,input.read())
 	input.close()
 	return ok

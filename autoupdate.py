@@ -68,7 +68,7 @@ class Updater(object):
 	def writefile(self,filename):
 		file = self.getfile(filename)
 		path = self.dir+filename
-		output = open(path,"w+b")
+		output = FileUtil.open(path,"w")
 		output.write(file)
 		print 'Update	'+filename+'	OK!'
 		output.close()
@@ -76,11 +76,11 @@ class Updater(object):
 		oldsha1 = self.old_file_sha1_ini
 		path = 'sha1.ini.tmp'
 		FileUtil.if_has_file_remove(path)
-		output = open(path,"wb")
+		output = FileUtil.open(path,"w")
 		tmp = self.opener.open(self.server+'/sha1.ini')
 		output.write(tmp.read()) 
 		output.close()
-		input = open(path,"r")
+		input = FileUtil.(path,"r")
 		tmp2 = input.read()
 		input.close()
 		hash = self.opener.open(self.server+'/sha1.sign').read()
@@ -89,7 +89,7 @@ class Updater(object):
 		ok = verify(tmp2,hash)
 		if not ok:
 			print 'Verify Failed!'
-			#return
+			return
 		print 'Verify Successful1!'
 		newsha1 = Config('sha1.ini.tmp')
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):

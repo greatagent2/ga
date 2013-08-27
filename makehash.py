@@ -51,7 +51,7 @@ def makehash(dir,topdown=True):
 			path = os.path.join(root,name)
 			newpath = path.replace(dir,'$path$')
 			regexpath = path.replace(dir,'.')
-			if regexpath.startswith(common.REGEX_PATH):
+			if regexpath.startswith(common.REGEX_START) or regexpath.endswith(common.REGEX_END):
 				continue
 			else:
 				sha1v = FileUtil.sumfile(path)
