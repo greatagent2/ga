@@ -63,7 +63,7 @@ class Updater(object):
 	def netopen(self,filename):
 		print 'Getting	'+filename+'.....'
 		file = self.opener.open(self.server+filename).read()
-		print 'Get	'+filename+'		OK!'
+		print 'Get	'+filename+'				OK!'
 		return file
 	def getfile(self,filename):
 		while 1:
@@ -85,19 +85,20 @@ class Updater(object):
 			oldfile = None
 		output = FileUtil.open(path,"wb")
 		output.write(file)
-		print 'Update	'+filename+'		OK!'
+		print 'Update	'+filename+'				OK!'
 		output.close()
 		input = FileUtil.open(path,"r")
 		sha1vv = FileUtil.get_file_sha1(input)
 		input.close()
 		if sha1v == sha1vv :
-			print 'Verify	'+filename+'		OK!'
+			print 'Verify	'+filename+'				Fail!'
 		else:
+			print 'Verify	'+filename+'				OK!'
 			if oldfile:
 				output = FileUtil.open(path,"wb")
 				output.write(oldfile)
 				output.close()
-			print 'Recover	'+filename+'	OK!'
+			print 'Recover	'+filename+'				OK!'
 			
 	def getnewsha1(self,path,oldsha1):
 		print 'Grabbing '+__sha1__+'.....'
