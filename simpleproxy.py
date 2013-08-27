@@ -132,8 +132,8 @@ class CertUtil(object):
     """CertUtil module, based on mitmproxy"""
 
     ca_vendor = 'GoAgent'
-    ca_keyfile = 'CA.crt'
-    ca_certdir = 'certs'
+    ca_keyfile = 'simpleproxy\\CA.crt'
+    ca_certdir = 'simpleproxy\\certs'
     ca_lock = threading.Lock()
 
     @staticmethod
@@ -321,7 +321,7 @@ class Logging(type(sys)):
 	NOTSET = 0
 
 	def __init__(self, *args, **kwargs):
-		self.level = self.__class__.INFO
+		self.level = self.__class__.WARNING
 		self.__set_error_color = lambda: None
 		self.__set_warning_color = lambda: None
 		self.__set_debug_color = lambda: None
