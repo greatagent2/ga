@@ -65,18 +65,31 @@ class Updater(object):
 			except Exception as e:
 				print e
 				return
-	def writefile(self,filename):
+	def writefile(self,filename,sha1v):
 		file = self.getfile(filename)
 		path = self.dir+filename
-		output = FileUtil.open(path,"w")
+		input = FileUtil.open(path,"r")
+		oldfile = input.read()
+		input.close()
+		output = FileUtil.open(path,"wb")
 		output.write(file)
 		print 'Update	'+filename+'	OK!'
 		output.close()
+		input = FileUtil.open(path,"r")
+		sha1vv = FileUtil.get_file_sha1(input)
+		input.close()
+		if sha1v == sha1vv :
+			print 'Verify	'+filename+'	OK!'
+		else:
+			output = FileUtil.open(path,"wb")
+			output.write(oldfile)
+			print 'Recover	'+filename+'	OK!'
+			output.close()
 	def update(self):
 		oldsha1 = self.old_file_sha1_ini
 		path = 'sha1.ini.tmp'
 		FileUtil.if_has_file_remove(path)
-		output = FileUtil.open(path,"w")
+		output = FileUtil.open(path,"wb")
 		tmp = self.opener.open(self.server+'/sha1.ini')
 		output.write(tmp.read()) 
 		output.close()
@@ -96,7 +109,7 @@ class Updater(object):
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
-				self.writefile(path)
+				self.writefile(path,sha1v)
 		FileUtil.if_has_file_remove(path)
 
 

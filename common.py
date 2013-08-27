@@ -6,9 +6,12 @@
 __config__   = 'autoupdate.ini'
 __sha1__   = 'sha1.ini'
 __sign__   = 'sha1.sign'
-__file__	 = 'autoupdate.py'
+__pubkey__   = '../greatagent.pubkey'
+__prikey__   = '../greatagent.prikey'
+__author__   = 'Wang Wei Qiang <wwqgtxx@gmail.com>'
+__names__   = 'GreatAgent'
 __version__ = '2.0.0'
-
+__file__	 = 'autoupdate.py'
 
 import sys
 import os

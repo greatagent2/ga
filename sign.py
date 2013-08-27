@@ -30,6 +30,10 @@ from common import FileUtil
 from common import Config
 from common import config
 from common import __config__
+from common import __pubkey__
+from common import __prikey__
+from common import __author__
+from common import __names__
 from common import __sha1__
 from common import __sign__
 from common import __file__
@@ -37,7 +41,7 @@ from common import __version__
 
 def sign(message):
 	#message = base92.encode(message)
-	privatefile = open('../greatagent.prikey')
+	privatefile = FileUtil.open(__prikey__,'r')
 	keydata = privatefile.read()
 	prikey = rsa.PrivateKey.load_pkcs1(keydata)
 	signature = rsa.sign(message, prikey, 'SHA-1')
@@ -45,7 +49,7 @@ def sign(message):
 def verify(message,signature):
 	#message = base92.encode(message)
 	signature = base92.decode(signature)
-	publicfile = FileUtil.open('../greatagent.pubkey','r')
+	publicfile = FileUtil.open(__pubkey__,'r')
 	keydata = publicfile.read()
 	pubkey = rsa.PublicKey.load_pkcs1(keydata)
 	try:
