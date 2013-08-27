@@ -208,185 +208,168 @@ class Common(object):
 common = Common()
 
 class CertUtil(object):
-    """CertUtil module, based on mitmproxy"""
+	"""CertUtil module, based on mitmproxy"""
 
-    ca_vendor = 'GoAgent'
-    ca_keyfile = 'CA.crt'
-    ca_certdir = 'certs'
-    ca_lock = threading.Lock()
+	ca_vendor = 'GoAgent'
+	ca_certdir = 'certs'
+	ca_lock = threading.Lock()
 
-    @staticmethod
-    def create_ca():
-        key = OpenSSL.crypto.PKey()
-        key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
-        ca = OpenSSL.crypto.X509()
-        ca.set_serial_number(0)
-        ca.set_version(2)
-        subj = ca.get_subject()
-        subj.countryName = 'CN'
-        subj.stateOrProvinceName = 'Internet'
-        subj.localityName = 'Cernet'
-        subj.organizationName = CertUtil.ca_vendor
-        subj.organizationalUnitName = '%s Root' % CertUtil.ca_vendor
-        subj.commonName = '%s CA' % CertUtil.ca_vendor
-        ca.gmtime_adj_notBefore(0)
-        ca.gmtime_adj_notAfter(24 * 60 * 60 * 3652)
-        ca.set_issuer(ca.get_subject())
-        ca.set_pubkey(key)
-        ca.add_extensions([
-            OpenSSL.crypto.X509Extension(b'basicConstraints', True, b'CA:TRUE'),
-            OpenSSL.crypto.X509Extension(b'nsCertType', True, b'sslCA'),
-            OpenSSL.crypto.X509Extension(b'extendedKeyUsage', True, b'serverAuth,clientAuth,emailProtection,timeStamping,msCodeInd,msCodeCom,msCTLSign,msSGC,msEFS,nsSGC'),
-            OpenSSL.crypto.X509Extension(b'keyUsage', False, b'keyCertSign, cRLSign'),
-            OpenSSL.crypto.X509Extension(b'subjectKeyIdentifier', False, b'hash', subject=ca), ])
-        ca.sign(key, 'sha1')
-        return key, ca
+	@staticmethod
+	def create_ca():
+		key = OpenSSL.crypto.PKey()
+		key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
+		ca = OpenSSL.crypto.X509()
+		ca.set_serial_number(0)
+		ca.set_version(2)
+		subj = ca.get_subject()
+		subj.countryName = 'CN'
+		subj.stateOrProvinceName = 'Internet'
+		subj.localityName = 'Cernet'
+		subj.organizationName = CertUtil.ca_vendor
+		subj.organizationalUnitName = '%s Root' % CertUtil.ca_vendor
+		subj.commonName = '%s CA' % CertUtil.ca_vendor
+		ca.gmtime_adj_notBefore(0)
+		ca.gmtime_adj_notAfter(24 * 60 * 60 * 3652)
+		ca.set_issuer(ca.get_subject())
+		ca.set_pubkey(key)
+		ca.add_extensions([
+			OpenSSL.crypto.X509Extension(b'basicConstraints', True, b'CA:TRUE'),
+			OpenSSL.crypto.X509Extension(b'nsCertType', True, b'sslCA'),
+			OpenSSL.crypto.X509Extension(b'extendedKeyUsage', True, b'serverAuth,clientAuth,emailProtection,timeStamping,msCodeInd,msCodeCom,msCTLSign,msSGC,msEFS,nsSGC'),
+			OpenSSL.crypto.X509Extension(b'keyUsage', False, b'keyCertSign, cRLSign'),
+			OpenSSL.crypto.X509Extension(b'subjectKeyIdentifier', False, b'hash', subject=ca), ])
+		ca.sign(key, 'sha1')
+		return key, ca
 
-    @staticmethod
-    def dump_ca():
-        key, ca = CertUtil.create_ca()
-        with open(CertUtil.ca_keyfile, 'wb') as fp:
-            fp.write(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, ca))
-            fp.write(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, key))
+	@staticmethod
+	def _get_cert(commonname, sans=()):
+		content = """
+-----BEGIN CERTIFICATE-----
+MIIDUjCCAjoCAQAwDQYJKoZIhvcNAQEFBQAwbzEVMBMGA1UECxMMR29BZ2VudCBS
+b290MRAwDgYDVQQKEwdHb0FnZW50MRMwEQYDVQQDEwpHb0FnZW50IENBMREwDwYD
+VQQIEwhJbnRlcm5ldDELMAkGA1UEBhMCQ04xDzANBgNVBAcTBkNlcm5ldDAeFw0x
+MTA0MjAxNzM3MzVaFw0zMTA0MjAxNzM3MzVaMG8xFTATBgNVBAsTDEdvQWdlbnQg
+Um9vdDEQMA4GA1UEChMHR29BZ2VudDETMBEGA1UEAxMKR29BZ2VudCBDQTERMA8G
+A1UECBMISW50ZXJuZXQxCzAJBgNVBAYTAkNOMQ8wDQYDVQQHEwZDZXJuZXQwggEi
+MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC0jV3yx3yGAHlQqzm4fbVascvT
+nyCdtParWBnQn5A3U9pJjI47SCo8j7FfeoYSL0mHbJ0mjafTnw+/ewb09AQIkdEl
+n6smojl7NOKs1Yhh0yldB6kQWiBPr/XKMBskmvcyjJEqkU6hwtibASaAZt+q5clT
+BJ2XRaeAaMDeDbYDchFa7MTNhoQMdQFu1UhqkJxtuVMBEs1/qPbx5O9pqy1RgAeK
+WvxyCzVRi2hHaTns+weZBJ6N71afyvr1etGqqtWVpjpobk1ZFBYk4xpznCbm4iqP
+Ar9nqdGDw1IJIdX0DyMJIJrpwOf94pAK9v6zG0jnsbMqromL18kEMXZgYSMlAgMB
+AAEwDQYJKoZIhvcNAQEFBQADggEBAASiRZFCcgQ8VsncB8wKG+bmN9UZhXLJYRGp
+m3KIUy/zG6mMWG/3TgkPn8ivNAkrk+1ul5SrRvot/Q7XWpb0/yKX0faX/512JF2G
+220gopqo4amj+g7SBKxzW8VhLQF6dm99eUd27JbAzi5VKXR0dMFECk2rFlA5gAR5
+zzFijaXHuObMtd2S292wji79JWocA0z6WVM5Qokw4hRTsXWfXL0BJTL3i/xRrEzW
+sdecYFpNhaEKldjegazoqAqiAMJj7PDU1AqdprNsq+3/tAmCvn0URkas4QhkvtqS
+FO6OGm/PZe5GbkBpAKdfLYFfEMO17SAGHHqAsIKAFfuHYONRGSM=
+-----END CERTIFICATE-----
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAtI1d8sd8hgB5UKs5uH21WrHL058gnbT2q1gZ0J+QN1PaSYyO
+O0gqPI+xX3qGEi9Jh2ydJo2n058Pv3sG9PQECJHRJZ+rJqI5ezTirNWIYdMpXQep
+EFogT6/1yjAbJJr3MoyRKpFOocLYmwEmgGbfquXJUwSdl0WngGjA3g22A3IRWuzE
+zYaEDHUBbtVIapCcbblTARLNf6j28eTvaastUYAHilr8cgs1UYtoR2k57PsHmQSe
+je9Wn8r69XrRqqrVlaY6aG5NWRQWJOMac5wm5uIqjwK/Z6nRg8NSCSHV9A8jCSCa
+6cDn/eKQCvb+sxtI57GzKq6Ji9fJBDF2YGEjJQIDAQABAoIBACB3n2JN/xV1tlsM
+P1fuuxLxD+8hGVNivEy5jgLW/q8EVCePr+/3HSlAyauas8tHV5iTrnrFVF2Yp9NO
+A0U/MA5+cjaqzLMozt9Z9j0QNPMqbrC89Ojs3AyYXsGZ/veJKlSbtGsMMDCkgiD1
+hv/l/+iSY66bEN+n9eQAclY77vQVXLSoCMReVfbdUxU9Q1MywODGf5Kng84gTyT/
+zd+xEfFHz8zbCDyw3Hd3hGJ2FxN+yFz1uI29ORb3/R7N9dZgsWf2fsfiRVPGuhAH
+RNlDockImB+BKeidx14sMim5p7s8heVYkBVW3SIOEReqz59b8x4QVhhZrzYWSHNq
+Gi0pLiECgYEA26v6b+rsxT//PznJSEhLyrg1Jo6XeWmFlwZY0KoipH6sxX/YPrDZ
+bOPN8KvAHtRltRLFs3L2iRaO2jltjxHGVF4FSYrf5KSExuj6/ABHxWM0YtezfDwR
+hU1ORg5QwVegMoOgsphS8ts2xn6T6wIwpBgtFPY84A52IBVn5CHuQtkCgYEA0mk5
+EpnZfmMT5ldcZ7JlZrxfWKvDHIcuA0neIBsd4oIcEfRhDC3TolH6pB4z4SCqyYw3
+t5HMiTx8yz074mycTcOcXO1Cs49kMZwbzKziRXpUdCW4EIo0DG+6LqwetPgYzozg
+FeTiGQBHqjrzjBLZ3RfozICbo7dvYHkVLK92my0CgYBWNBjlDnW3ujN6Jj0cxnIn
+rT3+UXqTxJsN9wmnaPyLPMKkBlVf1JqeJo9MYLnV31fCRQmcMAMbLOUGMf8SY9FG
+jlbY00ylNwJ75DWJ6ro/dXy7RRZELHZbr0iGKVv7Y12UNR88tpXmg6vtHQMC+CsK
+Wgpm7XJaIpKsaHoKhl4vkQKBgBBBTsZwGkxYTSZDY4EjWBAax2brRhSDIPviDgX+
+8k0YbiC493Jga/QjTzC0oJ9ozajqazeETP/hK2bsIR858s1TKlZHghqrHjty6vbh
++E0TyUh7zX+BncnEK+cFJw4mCIyUd49ZcloqGl89VKlin3AkM7jwypVYS4Nxd0BP
+geM1AoGBALOWNmYm9d4gRhUv14oJRiA+e+4evswiWvVdnS6UJ4tst0NlEKWahtpR
+kdAjav8WV1n6IbkJC2L743Ozjb63z5w6p5O7OtTyYUWbLt1hvNkHlkNP8AjRQP8E
++N2jjrMAdbEwahPNAX9QlzHpF62AfEGQ3oODUm06TGTq+yAPSyYm
+-----END RSA PRIVATE KEY-----
 
-    @staticmethod
-    def _get_cert(commonname, sans=()):
-        with open(CertUtil.ca_keyfile, 'rb') as fp:
-            content = fp.read()
-            key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, content)
-            ca = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, content)
+"""
+		key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, content)
+		ca = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, content)
 
-        pkey = OpenSSL.crypto.PKey()
-        pkey.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
+		pkey = OpenSSL.crypto.PKey()
+		pkey.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
 
-        req = OpenSSL.crypto.X509Req()
-        subj = req.get_subject()
-        subj.countryName = 'CN'
-        subj.stateOrProvinceName = 'Internet'
-        subj.localityName = 'Cernet'
-        subj.organizationalUnitName = '%s Branch' % CertUtil.ca_vendor
-        if commonname[0] == '.':
-            subj.commonName = '*' + commonname
-            subj.organizationName = '*' + commonname
-            sans = ['*'+commonname] + [x for x in sans if x != '*'+commonname]
-        else:
-            subj.commonName = commonname
-            subj.organizationName = commonname
-            sans = [commonname] + [x for x in sans if x != commonname]
-        #req.add_extensions([OpenSSL.crypto.X509Extension(b'subjectAltName', True, ', '.join('DNS: %s' % x for x in sans)).encode()])
-        req.set_pubkey(pkey)
-        req.sign(pkey, 'sha1')
+		req = OpenSSL.crypto.X509Req()
+		subj = req.get_subject()
+		subj.countryName = 'CN'
+		subj.stateOrProvinceName = 'Internet'
+		subj.localityName = 'Cernet'
+		subj.organizationalUnitName = '%s Branch' % CertUtil.ca_vendor
+		if commonname[0] == '.':
+			subj.commonName = '*' + commonname
+			subj.organizationName = '*' + commonname
+			sans = ['*'+commonname] + [x for x in sans if x != '*'+commonname]
+		else:
+			subj.commonName = commonname
+			subj.organizationName = commonname
+			sans = [commonname] + [x for x in sans if x != commonname]
+		#req.add_extensions([OpenSSL.crypto.X509Extension(b'subjectAltName', True, ', '.join('DNS: %s' % x for x in sans)).encode()])
+		req.set_pubkey(pkey)
+		req.sign(pkey, 'sha1')
 
-        cert = OpenSSL.crypto.X509()
-        cert.set_version(2)
-        try:
-            cert.set_serial_number(int(hashlib.md5(commonname.encode('utf-8')).hexdigest(), 16))
-        except OpenSSL.SSL.Error:
-            cert.set_serial_number(int(time.time()*1000))
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(60 * 60 * 24 * 3652)
-        cert.set_issuer(ca.get_subject())
-        cert.set_subject(req.get_subject())
-        cert.set_pubkey(req.get_pubkey())
-        if commonname[0] == '.':
-            sans = ['*'+commonname] + [s for s in sans if s != '*'+commonname]
-        else:
-            sans = [commonname] + [s for s in sans if s != commonname]
-        #cert.add_extensions([OpenSSL.crypto.X509Extension(b'subjectAltName', True, ', '.join('DNS: %s' % x for x in sans))])
-        cert.sign(key, 'sha1')
+		cert = OpenSSL.crypto.X509()
+		cert.set_version(2)
+		try:
+			cert.set_serial_number(int(hashlib.md5(commonname.encode('utf-8')).hexdigest(), 16))
+		except OpenSSL.SSL.Error:
+			cert.set_serial_number(int(time.time()*1000))
+		cert.gmtime_adj_notBefore(0)
+		cert.gmtime_adj_notAfter(60 * 60 * 24 * 3652)
+		cert.set_issuer(ca.get_subject())
+		cert.set_subject(req.get_subject())
+		cert.set_pubkey(req.get_pubkey())
+		if commonname[0] == '.':
+			sans = ['*'+commonname] + [s for s in sans if s != '*'+commonname]
+		else:
+			sans = [commonname] + [s for s in sans if s != commonname]
+		#cert.add_extensions([OpenSSL.crypto.X509Extension(b'subjectAltName', True, ', '.join('DNS: %s' % x for x in sans))])
+		cert.sign(key, 'sha1')
 
-        certfile = os.path.join(CertUtil.ca_certdir, commonname + '.crt')
-        with open(certfile, 'wb') as fp:
-            fp.write(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert))
-            fp.write(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, pkey))
-        return certfile
+		certfile = os.path.join(CertUtil.ca_certdir, commonname + '.crt')
+		with open(certfile, 'wb') as fp:
+			fp.write(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert))
+			fp.write(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, pkey))
+		return certfile
 
-    @staticmethod
-    def get_cert(commonname, sans=()):
-        if commonname.count('.') >= 2 and len(commonname.split('.')[-2]) > 4:
-            commonname = '.'+commonname.partition('.')[-1]
-        certfile = os.path.join(CertUtil.ca_certdir, commonname + '.crt')
-        if os.path.exists(certfile):
-            return certfile
-        elif OpenSSL is None:
-            return CertUtil.ca_keyfile
-        else:
-            with CertUtil.ca_lock:
-                if os.path.exists(certfile):
-                    return certfile
-                return CertUtil._get_cert(commonname, sans)
+	@staticmethod
+	def get_cert(commonname, sans=()):
+		if commonname.count('.') >= 2 and len(commonname.split('.')[-2]) > 4:
+			commonname = '.'+commonname.partition('.')[-1]
+		certfile = os.path.join(CertUtil.ca_certdir, commonname + '.crt')
+		if os.path.exists(certfile):
+			return certfile
+		elif OpenSSL is None:
+			return None
+		else:
+			with CertUtil.ca_lock:
+				if os.path.exists(certfile):
+					return certfile
+				return CertUtil._get_cert(commonname, sans)
 
-    @staticmethod
-    def import_ca(certfile):
-        commonname = os.path.splitext(os.path.basename(certfile))[0]
-        if OpenSSL:
-            try:
-                with open(certfile, 'rb') as fp:
-                    x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, fp.read())
-                    commonname = next(v.decode() for k, v in x509.get_subject().get_components() if k == b'O')
-            except Exception as e:
-                logging.error('load_certificate(certfile=%r) failed:%s', certfile, e)
-        if sys.platform.startswith('win'):
-            import ctypes
-            with open(certfile, 'rb') as fp:
-                certdata = fp.read()
-                if certdata.startswith(b'-----'):
-                    begin = b'-----BEGIN CERTIFICATE-----'
-                    end = b'-----END CERTIFICATE-----'
-                    certdata = base64.b64decode(b''.join(certdata[certdata.find(begin)+len(begin):certdata.find(end)].strip().splitlines()))
-                crypt32 = ctypes.WinDLL(b'crypt32.dll'.decode())
-                store_handle = crypt32.CertOpenStore(10, 0, 0, 0x4000 | 0x20000, b'ROOT'.decode())
-                if not store_handle:
-                    return -1
-                ret = crypt32.CertAddEncodedCertificateToStore(store_handle, 0x1, certdata, len(certdata), 4, None)
-                crypt32.CertCloseStore(store_handle, 0)
-                del crypt32
-                return 0 if ret else -1
-        elif sys.platform == 'darwin':
-            return os.system('security find-certificate -a -c "%s" | grep "%s" >/dev/null || security add-trusted-cert -d -r trustRoot -k "/Library/Keychains/System.keychain" "%s"' % (commonname, commonname, certfile))
-        elif sys.platform.startswith('linux'):
-            import platform
-            platform_distname = platform.dist()[0]
-            if platform_distname == 'Ubuntu':
-                pemfile = "/etc/ssl/certs/%s.pem" % commonname
-                new_certfile = "/usr/local/share/ca-certificates/%s.crt" % commonname
-                if not os.path.exists(pemfile):
-                    return os.system('cp "%s" "%s" && update-ca-certificates' % (certfile, new_certfile))
-            elif any(os.path.isfile('%s/certutil' % x) for x in os.environ['PATH'].split(os.pathsep)):
-                return os.system('certutil -L -d sql:$HOME/.pki/nssdb | grep "%s" || certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "%s" -i "%s"' % (commonname, commonname, certfile))
-            else:
-                logging.warning('please install *libnss3-tools* package to import GoAgent root ca')
-        return 0
-
-    @staticmethod
-    def check_ca():
-        #Check CA exists
-        capath = os.path.join(os.path.dirname(os.path.abspath(__file__)), CertUtil.ca_keyfile)
-        certdir = os.path.join(os.path.dirname(__file__), CertUtil.ca_certdir)
-        if not os.path.exists(capath):
-            if not OpenSSL:
-                logging.critical('CA.key is not exist and OpenSSL is disabled, ABORT!')
-                sys.exit(-1)
-            if os.path.exists(certdir):
-                if os.path.isdir(certdir):
-                    any(os.remove(x) for x in glob.glob(certdir+'/*.crt'))
-                else:
-                    os.remove(certdir)
-                    os.mkdir(certdir)
-            CertUtil.dump_ca()
-        if glob.glob('%s/*.key' % CertUtil.ca_certdir):
-            for filename in glob.glob('%s/*.key' % CertUtil.ca_certdir):
-                try:
-                    os.remove(filename)
-                    os.remove(os.path.splitext(filename)[0]+'.crt')
-                except EnvironmentError:
-                    pass
-        #Check CA imported
-        if CertUtil.import_ca(capath) != 0:
-            logging.warning('install root certificate failed, Please run as administrator/root/sudo')
-        #Check Certs Dir
-        if not os.path.exists(certdir):
-            os.makedirs(certdir)
+	@staticmethod
+	def check_ca():
+		#Check CA exists
+		certdir = os.path.join(os.path.dirname(__file__), CertUtil.ca_certdir)
+		if glob.glob('%s/*.key' % CertUtil.ca_certdir):
+			for filename in glob.glob('%s/*.key' % CertUtil.ca_certdir):
+				try:
+					os.remove(filename)
+					os.remove(os.path.splitext(filename)[0]+'.crt')
+				except EnvironmentError:
+					pass
+		#Check Certs Dir
+		if not os.path.exists(certdir):
+			os.makedirs(certdir)
 
 
 
