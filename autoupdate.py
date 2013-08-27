@@ -116,8 +116,9 @@ class Updater(object):
 		print 'Verify Successful1!'
 
 	def update(self):
+		versionfile = self.netopen('/'+__versionfile__)
 		print "Show Server Version Message:"
-		print self.netopen('/'+__versionfile__)
+		print versionfile
 		oldsha1 = self.old_file_sha1_ini
 		path = __sha1__+'.tmp'
 		FileUtil.if_has_file_remove(path)
