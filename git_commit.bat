@@ -1,3 +1,4 @@
+@echo off
 git rev-list HEAD >git.txt
 python27 makehash.py
 python27 sign.py
