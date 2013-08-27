@@ -1208,7 +1208,10 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							iplist += ips
 					except (socket.error, OSError) as e:
 						logging.error('socket.gethostbyname_ex(host=%r) failed:%s', host, e)
-				prefix = re.sub(r'\d+\.\d+$', '', random.choice(common.GOOGLE_HOSTS))
+				if len(random.choice(common.GOOGLE_HOSTS)) > 0: 
+					prefix = re.sub(r'\d+\.\d+$', '', random.choice(common.GOOGLE_HOSTS))
+				else :
+					prefix = ''
 				iplist = [x for x in iplist if x.startswith(prefix) and re.match(r'\d+\.\d+\.\d+\.\d+', x)]
 				if iplist and len(iplist) > len(hosts):
 					common.GOOGLE_HOSTS = list(set(iplist))
