@@ -100,7 +100,10 @@ class Updater(object):
 				output.write(oldfile)
 				output.close()
 			print 'Recover	'+filename+'				OK!'
-			
+		if filename.strip() == '/autoupdate.ini'.strip():
+			newconfig = Config(__config__)
+			newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
+			print 'ReWrite	autoupdate.ini				OK!'
 	def getnewsha1(self,path,oldsha1):
 		output = FileUtil.open(path,"wb")
 		output.write(self.netopen('/'+__sha1__)) 
@@ -132,10 +135,6 @@ class Updater(object):
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
 				self.writefile(path,sha1v)
-				if oldpath.strip() == '$path$\autoupdate.ini'.strip():
-					newconfig = Config(__config__)
-					newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
-					print 'ReWrite	autoupdate.ini				OK!'
 		FileUtil.if_has_file_remove(path)
 
 
