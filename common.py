@@ -101,6 +101,19 @@ class FileUtil(object):
 	def open(path,type):
 		path = path.replace('\\','/')
 		if type.endswith('w') or type.startswith('w'):
+			pathdir = ''
+			paths = path.split('/')
+			i = 1
+			for str in paths:
+				if i == len(paths):
+					break
+				if not str == '':
+					pathdir += '/'+str
+				i = i+1
+			pathdir = pathdir[1:]
+			if not os.path.isdir(pathdir) and not pathdir == '':
+				os.mkdir(pathdir)
+				print 'MakeDir	'+pathdir+'				OK!'
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
 				return open(path,type)
 			else:

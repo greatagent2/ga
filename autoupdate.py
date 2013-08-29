@@ -128,9 +128,13 @@ class Updater(object):
 		newsha1 = Config(path)
 		for path, sha1v in newsha1.getsection('FILE_SHA1'):
 			if not (sha1v == oldsha1.getconfig('FILE_SHA1',path)):
+				oldpath = path
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
 				self.writefile(path,sha1v)
+				if oldpath = '$path$/autoupdate.ini':
+					newconfig = Config(__config__)
+					newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
 		FileUtil.if_has_file_remove(path)
 
 
@@ -144,8 +148,6 @@ def main():
 	sha1 = makehash(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
 	updater.update()
-	newconfig = Config(__config__)
-	newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
 
 	#for path, sha1v in sha1.getsection('FILE_SHA1'):
 		#newpath = path.replace('$path$',dir)
