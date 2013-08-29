@@ -120,8 +120,12 @@ class FileUtil(object):
 						dir = dir+'/'+str
 						if dir.startswith('/'):
 							dir = dir[1:]
-						os.mkdir(dir)
-						print 'MakeDir	'+dir+'				OK!'
+						try :
+							os.mkdir(dir)
+							print 'MakeDir	'+dir+'				OK!'
+						except :
+							#print 'MakeDir	'+dir+'				OK!'
+							continue
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
 				return open(path,type)
 			else:
