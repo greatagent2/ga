@@ -132,7 +132,7 @@ class Updater(object):
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
 				self.writefile(path,sha1v)
-				if oldpath = '$path$/autoupdate.ini':
+				if oldpath == '$path$/autoupdate.ini':
 					newconfig = Config(__config__)
 					newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
 		FileUtil.if_has_file_remove(path)
