@@ -148,6 +148,8 @@ def main():
 	sha1 = makehash(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
 	updater.update()
+	newconfig = Config(__config__)
+	newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
 
 	#for path, sha1v in sha1.getsection('FILE_SHA1'):
 		#newpath = path.replace('$path$',dir)
