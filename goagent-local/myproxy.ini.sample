@@ -1,0 +1,37 @@
+[listen]
+ip = 127.0.0.1
+port = 8087
+visible = 1
+debuginfo = 0
+
+
+[gae]
+enable = 1
+appid = yourappid1|yourappid2|yourappid3
+password = yourpassword
+path = /2
+validate = 0
+obfuscate = 0
+ipv6 = 0
+
+[pac]
+enable = 1
+ip = 127.0.0.1
+port = 8086
+file = proxy.pac
+gfwlist = http://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt
+
+[proxy]
+enable = 0
+autodetect = 0
+host = 10.64.1.60
+port = 8080
+username = 
+password = 
+
+[dns]
+enable = 0
+listen = 127.0.0.1:53
+remote = 8.8.8.8
+cachesize = 5000
+timeout = 2

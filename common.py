@@ -8,7 +8,7 @@ __sha1__   = 'sha1.ini'
 __sign__   = 'sha1.sign'
 __git__   = 'git.txt'
 __versionfile__ = 'version'
-__pubkey__   = './data/greatagent2.pubkey'
+__pubkey__   = './greatagent2.pubkey'
 __prikey__   = '../greatagent2.prikey'
 __author__   = 'Wang Wei Qiang <wwqgtxx@gmail.com>'
 __names__   = 'GreatAgent2-GA'
@@ -40,6 +40,7 @@ import re
 import ConfigParser
 import hashlib
 import random
+import shutil
 
 import rsa,base92,pyasn1
 
@@ -52,6 +53,14 @@ class FileUtil(object):
 			__file__ = getattr(os, 'readlink', lambda x:x)(__file__)
 		os.chdir(os.path.dirname(os.path.abspath(__file__)))
 		return os.path.join(os.path.dirname(__file__), filename)
+
+	@staticmethod
+	def has_file(filename):
+		return os.path.isfile(FileUtil.getfile(filename))
+
+	@staticmethod
+	def delete_dir(dir):
+		shutil.rmtree(dir)
 
 	@staticmethod
 	def if_has_file_remove(filename):
@@ -137,7 +146,8 @@ class Common(object):
 		"""load config from ini"""
 		self.CONFIG = config.CONFIG
 		
-		self.AUTOUPDATE_SERVER = self.CONFIG.get('autoupdate', self.CONFIG.get('autoupdate', 'server')).split('|')
+		self.AUTOUPDATE_SERVER_STR = self.CONFIG.get('autoupdate', 'server')
+		self.AUTOUPDATE_SERVER = self.CONFIG.get('autoupdate',self.AUTOUPDATE_SERVER_STR ).split('|')
 		self.REGEX_START = tuple(x for x in self.CONFIG.get('regex', 'start').split('|') if x)
 		self.REGEX_END = tuple(x for x in self.CONFIG.get('regex', 'end').split('|') if x)
 		self.REGEX_ONLYW = tuple(x for x in self.CONFIG.get('regex', 'onlyw').split('|') if x)
