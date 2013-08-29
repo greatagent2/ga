@@ -112,6 +112,7 @@ class FileUtil(object):
 				i = i+1
 			pathdir = pathdir[1:]
 			if not os.path.isdir(pathdir) and not pathdir == '':
+				pathdir = pathdir.replace((self.cur_file_dir()).replace('\\','/')+'/','')
 				os.mkdir(pathdir)
 				print 'MakeDir	'+pathdir+'				OK!'
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
