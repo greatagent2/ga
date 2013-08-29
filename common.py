@@ -112,6 +112,10 @@ class FileUtil(object):
 				return open(path,type+"b")
 		else:
 			return
+			
+class MyConfigParser(ConfigParser.ConfigParser):
+	def optionxform(self, optionstr): 
+		return optionstr
 
 
 
@@ -121,7 +125,7 @@ class Config(object):
 		"""load config from proxy.ini"""
 		ConfigParser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 		self.FILENAME = config
-		self.CONFIG = ConfigParser.ConfigParser()
+		self.CONFIG = MyConfigParser()
 		self.CONFIG.read(FileUtil.getfile(config))
 
 	def writeconfig(self,section, option,str):
