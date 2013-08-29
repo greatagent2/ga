@@ -135,6 +135,7 @@ class Updater(object):
 				if oldpath == '$path$\autoupdate.ini':
 					newconfig = Config(__config__)
 					newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
+					print 'ReWrite	autoupdate.ini				OK!'
 		FileUtil.if_has_file_remove(path)
 
 
