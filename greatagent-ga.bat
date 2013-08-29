@@ -21,7 +21,7 @@ start goagent.exe
 cd..
 
 :: startfirefox.inc.bat
-:: Step6 - Start Firefox
+:: Step3 - Start Firefox
 echo Starting FirefoxPortable...
-start utility\php\php.exe -c utility\php\php.ini startfirefox.inc.php
+python27.exe startfirefox.py
 exit
