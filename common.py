@@ -116,8 +116,9 @@ class FileUtil(object):
 				pathdir = pathdir.replace((FileUtil.cur_file_dir()).replace('\\','/')+'/','')
 				dir = ''
 				for str in pathdir.split('/'):
-					dir = dir+str
-					os.mkdir(dir)
+					if notstr == '':
+						dir = dir+str
+						os.mkdir(dir)
 				print 'MakeDir	'+pathdir+'				OK!'
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
 				return open(path,type)
