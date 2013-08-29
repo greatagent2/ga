@@ -117,9 +117,9 @@ class FileUtil(object):
 				dir = ''
 				for str in pathdir.split('/'):
 					if not str == '':
+						dir = dir+'/'+str
 						if dir.startswith('/'):
 							dir = dir[1:]
-						dir = dir+'/'+str
 						os.mkdir(dir)
 						print 'MakeDir	'+dir+'				OK!'
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
