@@ -99,7 +99,7 @@ class FileUtil(object):
 
 	@staticmethod
 	def open(path,type):
-		path = path.replace('/','\\')
+		path = path.replace('\\','/')
 		if type.endswith('w') or type.startswith('w'):
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
 				return open(path,type)
