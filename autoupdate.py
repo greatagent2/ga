@@ -103,7 +103,7 @@ class Updater(object):
 		if filename.strip() == '/autoupdate.ini'.strip():
 			newconfig = Config(__config__)
 			newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
-			print 'ReWrite	autoupdate.ini				OK!'
+			print 'ReWrite	/autoupdate.ini				OK!'
 	def getnewsha1(self,path,oldsha1):
 		output = FileUtil.open(path,"wb")
 		output.write(self.netopen('/'+__sha1__)) 
