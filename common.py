@@ -116,7 +116,7 @@ class FileUtil(object):
 				pathdir = pathdir.replace((FileUtil.cur_file_dir()).replace('\\','/')+'/','')
 				dir = ''
 				for str in pathdir.split('/'):
-					if notstr == '':
+					if not str == '':
 						dir = dir+str
 						os.mkdir(dir)
 				print 'MakeDir	'+pathdir+'				OK!'
