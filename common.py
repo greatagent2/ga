@@ -120,7 +120,7 @@ class FileUtil(object):
 						dir = dir+'/'+str
 						if not os.path.isdir(dir):
 							os.mkdir(dir)
-				print 'MakeDir	'+pathdir+'				OK!'
+							print 'MakeDir	'+dir+'				OK!'
 			if path.endswith(sysconfig.REGEX_ONLYW)or type.endswith('b'):
 				return open(path,type)
 			else:
