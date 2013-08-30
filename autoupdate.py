@@ -31,13 +31,9 @@ from simpleproxy import common as proxyconfig
 from common import sysconfig as common
 from common import FileUtil
 from common import Config
-from common import config
 from common import __config__
-from common import __sha1__
-from common import __sign__
 from common import __file__
-from common import __version__
-from common import __versionfile__
+from common import Common
 from makehash import makehash
 from sign import verify
 from sign import sign
@@ -104,14 +100,16 @@ class Updater(object):
 			newconfig = Config(__config__)
 			newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
 			print 'ReWrite	/autoupdate.ini				OK!'
+			common.reloadini()
+			print 'ReLoad	/autoupdate.ini				OK!'
 	def getnewsha1(self,path,oldsha1):
 		output = FileUtil.open(path,"wb")
-		output.write(self.netopen('/'+__sha1__)) 
+		output.write(self.netopen('/'+common.CONFIG_SHA1)) 
 		output.close()
 		input = FileUtil.open(path,"r")
 		tmp2 = input.read()
 		input.close()
-		hash = self.netopen('/'+__sign__)
+		hash = self.netopen('/'+common.CONFIG_SIGN)
 		print 'Verifing Hash Table.....'
 		ok = verify(tmp2,hash)
 		if not ok:
@@ -121,11 +119,11 @@ class Updater(object):
 
 	def update(self):
 		print 'Checking for new update...'
-		versionfile = self.netopen('/'+__versionfile__)
+		versionfile = self.netopen('/'+common.CONFIG_VERSIONFILE)
 		print "Show Server Version Message:"
 		print versionfile
 		oldsha1 = self.old_file_sha1_ini
-		path = __sha1__+'.tmp'
+		path = common.CONFIG_SHA1+'.tmp'
 		FileUtil.if_has_file_remove(path)
 		self.getnewsha1(path,oldsha1)
 		newsha1 = Config(path)
@@ -148,8 +146,6 @@ def main():
 	sha1 = makehash(dir)
 	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
 	updater.update()
-	newconfig = Config(__config__)
-	newconfig.writeconfig('autoupdate', 'server',common.AUTOUPDATE_SERVER_STR)
 
 	#for path, sha1v in sha1.getsection('FILE_SHA1'):
 		#newpath = path.replace('$path$',dir)

@@ -4,15 +4,6 @@
 # Author: Wang Wei Qiang <wwqgtxx@gmail.com>
 
 __config__   = 'autoupdate.ini'
-__sha1__   = 'sha1.ini'
-__sign__   = 'sha1.sign'
-__git__   = 'git.txt'
-__versionfile__ = 'version'
-__pubkey__   = './greatagent2.pubkey'
-__prikey__   = '../greatagent2.prikey'
-__author__   = 'Wang Wei Qiang <wwqgtxx@gmail.com>'
-__names__   = 'GreatAgent2-GA'
-__version__ = '2.0.0'
 __file__	 = 'autoupdate.py'
 
 import sys
@@ -167,14 +158,12 @@ class Config(object):
 	def getsection(self,section):
 		return self.CONFIG.items(section) if self.CONFIG.has_section(section) else ''
 
-config = Config(__config__)
-
 class Common(object):
 	"""Global Config Object"""
 
 	def __init__(self):
 		"""load config from ini"""
-		self.CONFIG = config.CONFIG
+		self.CONFIG = Config(__config__).CONFIG
 		
 		self.AUTOUPDATE_SERVER_STR = self.CONFIG.get('autoupdate', 'server')
 		self.AUTOUPDATE_SERVER = self.CONFIG.get('autoupdate',self.AUTOUPDATE_SERVER_STR ).split('|')
@@ -182,11 +171,22 @@ class Common(object):
 		self.REGEX_END = tuple(x for x in self.CONFIG.get('regex', 'end').split('|') if x)
 		self.REGEX_ONLYW = tuple(x for x in self.CONFIG.get('regex', 'onlyw').split('|') if x)
 		self.REGEX_ONLYR = tuple(x for x in self.CONFIG.get('regex', 'onlyr').split('|') if x)
+		self.CONFIG_SHA1 = self.CONFIG.get('config', 'sha1')
+		self.CONFIG_SIGN = self.CONFIG.get('config', 'sign')
+		self.CONFIG_GIT = self.CONFIG.get('config', 'git')
+		self.CONFIG_VERSIONFILE = self.CONFIG.get('config', 'versionfile')
+		self.CONFIG_PUBKEY = self.CONFIG.get('config', 'pubkey')
+		self.CONFIG_PRIKEY = self.CONFIG.get('config', 'prikey')
+		self.CONFIG_AUTHOR = self.CONFIG.get('config', 'author')
+		self.CONFIG_NAMES = self.CONFIG.get('config', 'names')
+		self.CONFIG_VERSION = self.CONFIG.get('config', 'version')
 		
-		random.shuffle(self.AUTOUPDATE_SERVER)
 
+	def reloadini(self):
+		self.__init__()
 		
 	def info(self):
+		random.shuffle(self.AUTOUPDATE_SERVER)
 		info = ''
 		info += '------------------------------------------------------\n'
 		info += 'GreatAgent Version	: %s \n'% (__version__)

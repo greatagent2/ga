@@ -28,22 +28,12 @@ except (ImportError, SystemError):
 from common import sysconfig as common
 from common import FileUtil
 from common import Config
-from common import config
-from common import __versionfile__
 from common import __config__
-from common import __git__
-from common import __pubkey__
-from common import __prikey__
-from common import __author__
-from common import __names__
-from common import __sha1__
-from common import __sign__
 from common import __file__
-from common import __version__
 
 def sign(message):
 	#message = base92.encode(message)
-	privatefile = FileUtil.open(__prikey__,'r')
+	privatefile = FileUtil.open(common.CONFIG_PRIKEY,'r')
 	keydata = privatefile.read()
 	prikey = rsa.PrivateKey.load_pkcs1(keydata)
 	signature = rsa.sign(message, prikey, 'SHA-1')
@@ -51,7 +41,7 @@ def sign(message):
 def verify(message,signature):
 	#message = base92.encode(message)
 	signature = base92.decode(signature)
-	publicfile = FileUtil.open(__pubkey__,'r')
+	publicfile = FileUtil.open(common.CONFIG_PUBKEY,'r')
 	keydata = publicfile.read()
 	pubkey = rsa.PublicKey.load_pkcs1(keydata)
 	try:
@@ -76,16 +66,16 @@ def do(message,filename):
 	return ok
 	
 def version():
-	input = FileUtil.open(__git__,"r")
+	input = FileUtil.open(common.CONFIG_GIT,"r")
 	gits = input.read().replace('\r\n','\n').split('\n')
 	input.close()
 	message  = "=============================="
 	message += "\r\n"
-	message += "Name:"+__names__
+	message += "Name:"+common.CONFIG_NAMES
 	message += "\r\n"
-	message += "Author:"+__author__
+	message += "Author:"+common.CONFIG_AUTHOR
 	message += "\r\n"
-	message += "Version:"+__version__
+	message += "Version:"+common.CONFIG_VERSION
 	message += "\r\n"
 	message += "Now Git Version:"
 	message += str(len(gits))
@@ -98,7 +88,7 @@ def version():
 	message += "\r\n"
 	message += "=============================="
 	message += "\r\n"
-	out = FileUtil.open(__versionfile__,"w")
+	out = FileUtil.open(common.CONFIG_VERSIONFILE,"w")
 	out.write(message)
 	out.close
 	return message
@@ -107,11 +97,11 @@ def main():
 	dir = FileUtil.cur_file_dir()
 	#print 'now dir : '+dir
 	os.chdir(dir)
-	input = open(__sha1__,"r")
+	input = open(common.CONFIG_SHA1,"r")
 	sha1 = input.read()
 	input.close()
 	print 'Now Signing sha1.ini ...'
-	if do(sha1,__sign__):
+	if do(sha1,common.CONFIG_SIGN):
 		print 'Sign OK!'
 		print version()
 	else:

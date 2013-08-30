@@ -32,11 +32,8 @@ from simpleproxy import common as proxyconfig
 from common import sysconfig as common
 from common import FileUtil
 from common import Config
-from common import config
 from common import __config__
-from common import __sha1__
 from common import __file__
-from common import __version__
 
 import os
 import sys
@@ -47,9 +44,9 @@ import random
 
 def makehash(dir,topdown=True):
 	try : 
-		print 'Generating '+__sha1__+' table...'
-		FileUtil.if_has_file_remove(__sha1__)
-		sha1 = Config(__sha1__)
+		print 'Generating '+common.CONFIG_SHA1+' table...'
+		FileUtil.if_has_file_remove(common.CONFIG_SHA1)
+		sha1 = Config(common.CONFIG_SHA1)
 		for root, dirs, files in os.walk(dir, topdown):
 			for name in files:
 				path = os.path.join(root,name)
@@ -60,10 +57,10 @@ def makehash(dir,topdown=True):
 				else:
 					sha1v = FileUtil.sumfile(path)
 					sha1.writeconfig('FILE_SHA1',newpath,sha1v)
-		print 'DONE generate '+__sha1__+' table!'
+		print 'DONE generate '+common.CONFIG_SHA1+' table!'
 		return sha1
 	except Exception as e:
-		print 'FAIL to generate '+__sha1__+' table!'
+		print 'FAIL to generate '+common.CONFIG_SHA1+' table!'
 		print e
 		sys.exit()
 
