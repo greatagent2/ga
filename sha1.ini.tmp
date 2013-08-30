@@ -1,5 +1,5 @@
 [FILE_SHA1]
-$path$\autoupdate.ini = e98a3cbc0f819e783ce4d7ee3e156e71fde520cb
+$path$\autoupdate.ini = aa38d62942501809e0664bdb2ac4fb959967dec0
 $path$\autoupdate.py = c4184984282100a1f426fed405cec6f020a1d490
 $path$\common.py = 123b97b9326f096955ec6263b8ff1398f1501578
 $path$\greatagent-ga.bat = 24e8846c807fe65538b261937abcd64536909fab
@@ -18,8 +18,6 @@ $path$\simpleproxy.py = f7638482865b860fa93050a5fcdca3bdf3bc640c
 $path$\startfirefox.py = e670b8dd45924464bfc9de828c27327ddae86c59
 $path$\wwqgtxx-goagent.bat = b6db85cd30a388c86748c34e6165cf5441a0f298
 $path$\certs\.gitkeep = da39a3ee5e6b4b0d3255bfef95601890afd80709
-$path$\certs\.greatagent2-ga.googlecode.com.crt = a419d229c1c58c8b44fecca8f2bb73cebe2af882
-$path$\certs\.greatagent2-test.googlecode.com.crt = fd08393f73e2cc3126f50f3b3c9424222c9de03d
 $path$\FirefoxPortable\Data\profile\cert8.db = 157dee2b0d2bddca2f0367050c68b4cacbe2e50f
 $path$\goagent-local\addto-startup.py = 50e3254a3827dd9b9d53ac8a5144a993a76fcf03
 $path$\goagent-local\addto-startup.vbs = 3e046a0adaab2d38b212b8cc8a223db5b01c1c56
