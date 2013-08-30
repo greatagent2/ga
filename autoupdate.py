@@ -117,7 +117,7 @@ class Updater(object):
 			sys.exit()
 		print 'Verify Successful1!'
 		
-	def cleandir():
+	def cleandir(self):
 		needclean = Config(common.CONFIG_NEEDCLEAN)
 		for path, sha1v in needclean.getsection('NEEDCLEAN'):
 			path = path.replace('$path$','')
