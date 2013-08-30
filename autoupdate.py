@@ -122,7 +122,7 @@ class Updater(object):
 		for path, sha1v in needclean.getsection('NEEDCLEAN'):
 			path = path.replace('\\','/')
 			path = path.replace('$path$/','')
-			FileUtil.if_has_file_remove(path)
+			FileUtil.if_has_file_remove(path,showinfo = True)
 
 	def update(self):
 		print 'Checking for new update...'

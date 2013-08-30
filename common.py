@@ -54,11 +54,12 @@ class FileUtil(object):
 		shutil.rmtree(dir)
 
 	@staticmethod
-	def if_has_file_remove(filename):
+	def if_has_file_remove(filename,showinfo = False):
 		if os.path.isfile(FileUtil.getfile(filename)):
 			try : 
 				os.remove(FileUtil.getfile(filename)) 
-				'Remove	'+filename+'				OK!'
+				if showinfo:
+					print 'Remove	'+filename+'				OK!'
 			except :
 				return
 
