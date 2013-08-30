@@ -189,7 +189,7 @@ class Common(object):
 		random.shuffle(self.AUTOUPDATE_SERVER)
 		info = ''
 		info += '------------------------------------------------------\n'
-		info += 'GreatAgent Version	: %s \n'% (__version__)
+		info += 'GreatAgent Version	: %s \n'% (self.CONFIG_VERSION)
 		info += 'RunTime            :python/%s %spyopenssl/%s rsa/%s PyASN1/%s base92/%s\n' % (sys.version[:5], gevent and 'gevent/%s ' % gevent.__version__ or '', getattr(OpenSSL, '__version__', 'Disabled'),rsa.__version__,pyasn1.__version__,base92.__version__)
 		info += 'Update Server      : %s\n' % '|'.join(self.AUTOUPDATE_SERVER)
 		info += '------------------------------------------------------\n'
