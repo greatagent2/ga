@@ -173,6 +173,7 @@ class Common(object):
 		self.REGEX_ONLYR = tuple(x for x in self.CONFIG.get('regex', 'onlyr').split('|') if x)
 		self.CONFIG_SHA1 = self.CONFIG.get('config', 'sha1')
 		self.CONFIG_SIGN = self.CONFIG.get('config', 'sign')
+		self.CONFIG_NEEDCLEAN = self.CONFIG.get('config', 'needclean')
 		self.CONFIG_GIT = self.CONFIG.get('config', 'git')
 		self.CONFIG_VERSIONFILE = self.CONFIG.get('config', 'versionfile')
 		self.CONFIG_PUBKEY = self.CONFIG.get('config', 'pubkey')
