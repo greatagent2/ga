@@ -56,7 +56,11 @@ class FileUtil(object):
 	@staticmethod
 	def if_has_file_remove(filename):
 		if os.path.isfile(FileUtil.getfile(filename)):
-			os.remove(FileUtil.getfile(filename)) 
+			try : 
+				os.remove(FileUtil.getfile(filename)) 
+				'Remove	'+filename+'				OK!'
+			except :
+				return
 
 	@staticmethod
 	def get_file_sha1(f):

@@ -140,7 +140,7 @@ class Updater(object):
 				path = path.replace('$path$','')
 				path = path.replace('\\','/')
 				self.writefile(path,sha1v)
-		#FileUtil.if_has_file_remove(path)
+		FileUtil.if_has_file_remove(path)
 		print 'Finished Update'
 		print 'Cleaning DIR'
 		self.cleandir()
