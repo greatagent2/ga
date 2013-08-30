@@ -120,8 +120,8 @@ class Updater(object):
 	def cleandir(self):
 		needclean = Config(common.CONFIG_NEEDCLEAN)
 		for path, sha1v in needclean.getsection('NEEDCLEAN'):
-			path = path.replace('$path$','')
 			path = path.replace('\\','/')
+			path = path.replace('$path$/','')
 			FileUtil.if_has_file_remove(path)
 
 	def update(self):
@@ -141,8 +141,10 @@ class Updater(object):
 				path = path.replace('\\','/')
 				self.writefile(path,sha1v)
 		#FileUtil.if_has_file_remove(path)
-		self.cleandir()
 		print 'Finished Update'
+		print 'Cleaning DIR'
+		self.cleandir()
+		print 'Finished Clean'
 		
 
 
