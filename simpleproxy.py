@@ -304,7 +304,7 @@ class DNSUtil(object):
 						if data and not DNSUtil.is_bad_reply(data):
 							return data[2:]
 						else:
-							logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return poisoned udp data=%r', qname, dnsserver, data)
+							logging.debug('DNSUtil._remote_resolve(dnsserver=%r, %r) return poisoned udp data=%r', qname, dnsserver, data)
 				else:
 					# TCP mode query
 					sock = socket.socket(family=address_family, type=socket.SOCK_STREAM)
@@ -315,13 +315,13 @@ class DNSUtil(object):
 					rfile = sock.makefile('rb', 512)
 					data = rfile.read(2)
 					if not data:
-						logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp header data=%r', qname, dnsserver, data)
+						logging.debug('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp header data=%r', qname, dnsserver, data)
 						continue
 					data = rfile.read(struct.unpack('>h', data)[0])
 					if data and not DNSUtil.is_bad_reply(data):
 						return data[2:]
 					else:
-						logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp data=%r', qname, dnsserver, data)
+						logging.debug('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp data=%r', qname, dnsserver, data)
 			except (socket.error, ssl.SSLError, OSError) as e:
 				if e.args[0] in (errno.ETIMEDOUT, 'timed out'):
 					continue
@@ -773,7 +773,7 @@ class HTTPUtil(object):
 				else:
 					if i == 0:
 						# only output first error
-						logging.warning('create_connection to %s return %r, try again.', addrs, result)
+						logging.debug('create_connection to %s return %r, try again.', addrs, result)
 
 	def create_ssl_connection(self, address, timeout=None, source_address=None):
 		def _create_ssl_connection(ipaddr, timeout, queobj):
@@ -901,7 +901,7 @@ class HTTPUtil(object):
 				else:
 					if i == 0:
 						# only output first error
-						logging.warning('create_ssl_connection to %s return %r, try again.', addrs, result)
+						logging.debug('create_ssl_connection to %s return %r, try again.', addrs, result)
 
 	def create_connection_withdata(self, address, timeout=None, source_address=None, data=None):
 		assert isinstance(data, str) and data
@@ -984,7 +984,7 @@ class HTTPUtil(object):
 										#remote_addr = '%s:%s'%remote.getpeername()[:2]
 										pongcallback()
 									except Exception as e:
-										logging.warning('remote=%s pongcallback=%s failed: %s', remote, pongcallback, e)
+										logging.debug('remote=%s pongcallback=%s failed: %s', remote, pongcallback, e)
 									finally:
 										pongcallback = None
 							else:
@@ -1172,7 +1172,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					google_ipmap[domain] = [domain]
 			google_iplist = list(set(sum(list(google_ipmap.values()), [])))
 			if len(google_iplist) < 10 or len(set(x.split('.', 1)[0] for x in google_iplist)) == 1:
-				logging.warning('local google_iplist=%s is too short, try remote_resolve', google_iplist)
+				logging.debug('local google_iplist=%s is too short, try remote_resolve', google_iplist)
 				need_resolve_remote += list(common.GOOGLE_HOSTS)
 			for dnsserver in ('8.8.8.8', '8.8.4.4', '114.114.114.114', '114.114.115.115'):
 				for domain in need_resolve_remote:
