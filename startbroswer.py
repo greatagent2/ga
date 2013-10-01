@@ -26,7 +26,7 @@ def main():
 		print "Don't Have GoogleChromePortable"
 	print 'Starting OperaPortable...'
 	if  FileUtil.has_file('OperaPortable/OperaPortable.exe'):
-		os.system('start ./OperaPortable/OperaPortable.exe   --ignore-certificate-errors  "https://greatagent-ifanqiang.googlecode.com/git-history/web/ifanqiang3.htm"')
+		os.system('start ./OperaPortable/OperaPortable.exe "https://greatagent-ifanqiang.googlecode.com/git-history/web/ifanqiang3.htm"')
 		return
 	else:
 		print "Don't Have OperaPortable"
