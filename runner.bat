@@ -11,7 +11,7 @@ cd..
 :: startfirefox.inc.bat
 :: Step3 - Start Firefox
 echo Starting FirefoxPortable...
-python27.exe startfirefox.py
+python27.exe startbroswer.py
 
 pause
 
