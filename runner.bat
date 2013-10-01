@@ -9,8 +9,8 @@ start goagent.exe
 cd..
 
 :: startfirefox.inc.bat
-:: Step3 - Start Firefox
-echo Starting FirefoxPortable...
+:: Step3 - Start PortableBroswer
+echo Starting PortableBroswer...
 python27.exe startbroswer.py
 
 pause
