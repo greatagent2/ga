@@ -20,8 +20,16 @@ def main():
 		FileUtil.delete_dir("FirefoxPortable")
 	print 'Starting GoogleChromePortable...'
 	if  FileUtil.has_file('GoogleChromePortable/GoogleChromePortable.exe'):
-		os.system('start ./GoogleChromePortable/GoogleChromePortable.exe  -no-remote "https://greatagent-ifanqiang.googlecode.com/git-history/web/ifanqiang3.htm"')
+		os.system('start ./GoogleChromePortable/GoogleChromePortable.exe   --ignore-certificate-errors  "https://greatagent-ifanqiang.googlecode.com/git-history/web/ifanqiang3.htm"')
 		return
+	else:
+		print "Don't Have GoogleChromePortable"
+	print 'Starting OperaPortable...'
+	if  FileUtil.has_file('OperaPortable/OperaPortable.exe'):
+		os.system('start ./OperaPortable/OperaPortable.exe   --ignore-certificate-errors  "https://greatagent-ifanqiang.googlecode.com/git-history/web/ifanqiang3.htm"')
+		return
+	else:
+		print "Don't Have OperaPortable"
 
 
 if __name__ == '__main__':
