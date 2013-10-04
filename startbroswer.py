@@ -30,7 +30,13 @@ def main():
 		return
 	else:
 		print "Don't Have OperaPortable"
-
+		print 'Starting MaxthonPortable...'
+	if  FileUtil.has_file('MaxthonPortable/MaxthonPortable.exe'):
+		os.system('start ./MaxthonPortable/MaxthonPortable.exe "https://greatagent-ifanqiang.googlecode.com/git-history/web/ifanqiang3.htm"')
+		return
+	else:
+		print "Don't Have MaxthonPortable"
+	print "Don't Have Any Portable Broswer!"
 
 if __name__ == '__main__':
 	main()
