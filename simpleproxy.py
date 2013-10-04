@@ -1199,7 +1199,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		elif not common.PROXY_ENABLE:
 			logging.debug('resolve common.GOOGLE_HOSTS domain=%r to iplist', common.GOOGLE_HOSTS)
 			if common.GAE_PROFILE == 'google_cn':
-				hosts = ('www.google.cn', 'www.g.cn','www.guge.com','www.guge.cn','ditu.google.cn',"www.google.com","mail.google.com","www.android.com","ssl.google-analytics.com")
+				hosts = ('www.google.cn', 'www.g.cn','ditu.google.cn',"www.google-analytics.com","ssl.google-analytics.com","www.google.com","mail.google.com","www.android.com")
 				iplist = []
 				for host in hosts:
 					try:
