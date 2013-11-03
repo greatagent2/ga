@@ -17,6 +17,7 @@
 #      Felix Yan      <felixonmars@gmail.com>
 #      Mort Yao       <mort.yao@gmail.com>
 #      Wang Wei Qiang <wwqgtxx@gmail.com>
+#      Poly Rabbit    <mcx_221@foxmail.com>
 
 __version__ = '3.0.5'
 
@@ -38,6 +39,7 @@ except (ImportError, SystemError):
     gevent = None
 
 import errno
+import binascii
 import time
 import struct
 import collections
@@ -336,17 +338,24 @@ class CertUtil(object):
         if not os.path.exists(certdir):
             os.makedirs(certdir)
 
-gevent_wait_read = gevent.socket.wait_read if 'gevent.socket' in sys.modules else lambda fd,t: select.select([fd], [], [fd], t)
-gevent_wait_write = gevent.socket.wait_write if 'gevent.socket' in sys.modules else lambda fd,t: select.select([], [fd], [fd], t)
-gevent_wait_readwrite = gevent.socket.wait_readwrite if 'gevent.socket' in sys.modules else lambda fd,t: select.select([fd], [fd], [fd], t)
 
 class SSLConnection(object):
+
+    has_gevent = socket.socket is getattr(sys.modules.get('gevent.socket'), 'socket', None)
 
     def __init__(self, context, sock):
         self._context = context
         self._sock = sock
         self._connection = OpenSSL.SSL.Connection(context, sock)
         self._makefile_refs = 0
+        if self.has_gevent:
+            self._wait_read = gevent.socket.wait_read
+            self._wait_write = gevent.socket.wait_write
+            self._wait_readwrite = gevent.socket.wait_readwrite
+        else:
+            self._wait_read = lambda fd,t: select.select([fd], [], [fd], t)
+            self._wait_write = lambda fd,t: select.select([], [fd], [fd], t)
+            self._wait_readwrite = lambda fd,t: select.select([fd], [fd], [fd], t)
 
     def __getattr__(self, attr):
         if attr not in ('_context', '_sock', '_connection', '_makefile_refs'):
@@ -365,7 +374,7 @@ class SSLConnection(object):
                 break
             except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError, OpenSSL.SSL.WantWriteError):
                 sys.exc_clear()
-                gevent_wait_readwrite(self._sock.fileno(), timeout)
+                self._wait_readwrite(self._sock.fileno(), timeout)
 
     def connect(self, *args, **kwargs):
         timeout = self._sock.gettimeout()
@@ -375,10 +384,10 @@ class SSLConnection(object):
                 break
             except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
                 sys.exc_clear()
-                gevent_wait_read(self._sock.fileno(), timeout)
+                self._wait_read(self._sock.fileno(), timeout)
             except OpenSSL.SSL.WantWriteError:
                 sys.exc_clear()
-                gevent_wait_write(self._sock.fileno(), timeout)
+                self._wait_write(self._sock.fileno(), timeout)
 
     def send(self, data, flags=0):
         timeout = self._sock.gettimeout()
@@ -388,10 +397,10 @@ class SSLConnection(object):
                 break
             except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
                 sys.exc_clear()
-                gevent_wait_read(self._sock.fileno(), timeout)
+                self._wait_read(self._sock.fileno(), timeout)
             except OpenSSL.SSL.WantWriteError:
                 sys.exc_clear()
-                gevent_wait_write(self._sock.fileno(), timeout)
+                self._wait_write(self._sock.fileno(), timeout)
             except OpenSSL.SSL.SysCallError as e:
                 if e[0] == -1 and not data:
                     # errors when writing empty strings are expected and can be ignored
@@ -408,10 +417,10 @@ class SSLConnection(object):
                 return self._connection.recv(bufsiz, flags)
             except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
                 sys.exc_clear()
-                gevent_wait_read(self._sock.fileno(), timeout)
+                self._wait_read(self._sock.fileno(), timeout)
             except OpenSSL.SSL.WantWriteError:
                 sys.exc_clear()
-                gevent_wait_write(self._sock.fileno(), timeout)
+                self._wait_write(self._sock.fileno(), timeout)
             except OpenSSL.SSL.ZeroReturnError:
                 return ''
 
@@ -480,19 +489,15 @@ class PacUtil(object):
         except ValueError:
             need_update = False
         try:
-            urlfilter_urls = common.PAC_URLFILTER.split('|')
-            urlfilter_content = '\r\n\r\n'.join(['Opera Preferences version 2.1', '[prefs]\r\nprioritize excludelist=1', '[include]\r\n*', '[exclude]'])
-            for urlfilter_url in urlfilter_urls:
-                logging.info('try download %r to update_pacfile(%r)', urlfilter_url, filename)
-                sub_content = opener.open(urlfilter_url).read()
-                urlfilter_content += sub_content[sub_content.index('[exclude]')+9:] + '\r\n'
-            logging.info('%r downloaded, try convert it with urlfilter2pac', urlfilter_urls)
+            logging.info('try download %r to update_pacfile(%r)', common.PAC_ADBLOCK, filename)
+            adblock_content = opener.open(common.PAC_ADBLOCK).read()
+            logging.info('%r downloaded, try convert it with adblock2pac', common.PAC_ADBLOCK)
             if 'gevent' in sys.modules and time.sleep is getattr(sys.modules['gevent'], 'sleep', None) and hasattr(gevent.get_hub(), 'threadpool'):
-                jsrule = gevent.get_hub().threadpool.apply(PacUtil.urlfilter2pac, (urlfilter_content, 'FindProxyForURLByUrlfilter', blackhole, default))
+                jsrule = gevent.get_hub().threadpool.apply(PacUtil.adblock2pac, (adblock_content, 'FindProxyForURLByAdblock', blackhole, default))
             else:
-                jsrule = PacUtil.urlfilter2pac(urlfilter_content, 'FindProxyForURLByUrlfilter', blackhole, default)
+                jsrule = PacUtil.adblock2pac(adblock_content, 'FindProxyForURLByAdblock', blackhole, default)
             content += '\r\n' + jsrule + '\r\n'
-            logging.info('%r downloaded and parsed', common.PAC_URLFILTER)
+            logging.info('%r downloaded and parsed', common.PAC_ADBLOCK)
         except Exception as e:
             need_update = False
             logging.exception('update_pacfile failed: %r', e)
@@ -568,6 +573,92 @@ class PacUtil(object):
                     jsLines.append(jsLine)
                 else:
                     jsLines.insert(0, jsLine)
+        function = 'function %s(url, host) {\r\n%s\r\n%sreturn "%s";\r\n}' % (func_name, '\n'.join(jsLines), ' '*indent, default)
+        return function
+
+    @staticmethod
+    def adblock2pac(content, func_name='FindProxyForURLByAdblock', proxy='127.0.0.1:8086', default='DIRECT', indent=4):
+        """adblock list to Pac, based on https://github.com/iamamac/autoproxy2pac"""
+        jsLines = []
+        for line in content.splitlines()[1:]:
+            if not line or line.startswith('!') or '##' in line or '#@#' in line:
+                continue
+            use_proxy = True
+            use_start = False
+            use_end = False
+            use_domain = False
+            use_postfix = []
+            if '$' in line:
+                posfixs = line.split('$')[-1].split(',')
+                if any('domain' in x for x in posfixs):
+                    continue
+                if 'image' in posfixs:
+                    use_postfix += ['.jpg', '.gif']
+                elif 'script' in posfixs:
+                    use_postfix += ['.js']
+                else:
+                    continue
+            line = line.split('$')[0]
+            if line.startswith("@@"):
+                line = line[2:]
+                use_proxy = False
+            if '||' == line[:2]:
+                line = line[2:]
+                use_domain = True
+            elif '|' == line[0]:
+                line = line[1:]
+                use_start = True
+            if line[-1] in ('^', '|'):
+                line = line[:-1]
+                use_end = True
+            return_proxy = 'PROXY %s' % proxy if use_proxy else default
+            line = line.replace('^', '*').strip('*')
+            if use_start and use_end:
+                if '*' in line:
+                    jsLine = 'if (shExpMatch(url, "%s")) return "%s";' % (line, return_proxy)
+                else:
+                    jsLine = 'if (url == "%s") return "%s";' % (line, return_proxy)
+            elif use_start:
+                if '*' in line:
+                    if use_postfix:
+                        jsCondition = ' || '.join('shExpMatch(url, "%s*%s")' % (line, x) for x in use_postfix)
+                        jsLine = 'if (%s) return "%s";' % (jsCondition, return_proxy)
+                    else:
+                        jsLine = 'if (shExpMatch(url, "%s*")) return "%s";' % (line, return_proxy)
+                else:
+                    jsLine = 'if (url.indexOf("%s") == 0) return "%s";' % (line, return_proxy)
+            elif use_domain and use_end:
+                if '*' in line:
+                    jsLine = 'if (shExpMatch(host, "%s*")) return "%s";' % (line, return_proxy)
+                else:
+                    jsLine = 'if (host == "%s") return "%s";' % (line, return_proxy)
+            elif use_domain:
+                if line.split('/')[0].count('.') <= 1:
+                    jsLine = 'if (shExpMatch(url, "http://*.%s*")) return "%s";' % (line, return_proxy)
+                else:
+                    if '*' in line:
+                        if use_postfix:
+                            jsCondition = ' || '.join('shExpMatch(url, "http://%s*%s")' % (line, x) for x in use_postfix)
+                            jsLine = 'if (%s) return "%s";' % (jsCondition, return_proxy)
+                        else:
+                            jsLine = 'if (shExpMatch(url, "http://%s*")) return "%s";' % (line, return_proxy)
+                    else:
+                        if use_postfix:
+                            jsCondition = ' || '.join('shExpMatch(url, "http://%s*%s")' % (line, x) for x in use_postfix)
+                            jsLine = 'if (%s) return "%s";' % (jsCondition, return_proxy)
+                        else:
+                            jsLine = 'if (url.indexOf("http://%s") == 0) return "%s";' % (line, return_proxy)
+            else:
+                if use_postfix:
+                    jsCondition = ' || '.join('shExpMatch(url, "*%s*%s")' % (line, x) for x in use_postfix)
+                    jsLine = 'if (%s) return "%s";' % (jsCondition, return_proxy)
+                else:
+                    jsLine = 'if (shExpMatch(url, "*%s*")) return "%s";' % (line, return_proxy)
+            jsLine = ' ' * indent + jsLine
+            if use_proxy:
+                jsLines.append(jsLine)
+            else:
+                jsLines.insert(0, jsLine)
         function = 'function %s(url, host) {\r\n%s\r\n%sreturn "%s";\r\n}' % (func_name, '\n'.join(jsLines), ' '*indent, default)
         return function
 
@@ -772,6 +863,18 @@ class HTTPUtil(object):
         self.ssl_obfuscate = ssl_obfuscate or self.ssl_obfuscate
         if self.ssl_validate or self.ssl_obfuscate:
             self.ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
+            self.ssl_context.set_session_id(binascii.b2a_hex(os.urandom(10)))
+            if hasattr(OpenSSL.SSL, 'SESS_CACHE_BOTH'):
+                self.ssl_context.set_session_cache_mode(OpenSSL.SSL.SESS_CACHE_BOTH)
+            else:
+                try:
+                    import ctypes
+                    SSL_CTRL_SET_SESS_CACHE_MODE = 44
+                    SESS_CACHE_BOTH = 0x3
+                    ctx = ctypes.c_void_p.from_address(id(self.ssl_context)+ctypes.sizeof(ctypes.c_int)+ctypes.sizeof(ctypes.c_voidp))
+                    ctypes.cdll.ssleay32.SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SESS_CACHE_MODE, SESS_CACHE_BOTH, None)
+                except Exception as e:
+                    logging.warning('SSL_CTX_set_session_cache_mode failed: %r', e)
         else:
             self.ssl_context = None
         if self.ssl_validate:
@@ -1233,7 +1336,7 @@ class Common(object):
         self.PAC_PORT = self.CONFIG.getint('pac', 'port')
         self.PAC_FILE = self.CONFIG.get('pac', 'file').lstrip('/')
         self.PAC_GFWLIST = self.CONFIG.get('pac', 'gfwlist')
-        self.PAC_URLFILTER = self.CONFIG.get('pac', 'urlfilter')
+        self.PAC_ADBLOCK = self.CONFIG.get('pac', 'adblock')
         self.PAC_EXPIRED = self.CONFIG.getint('pac', 'expired')
 
         self.PAAS_ENABLE = self.CONFIG.getint('paas', 'enable')
@@ -1308,9 +1411,14 @@ class Common(object):
         self.LOVE_ENABLE = self.CONFIG.getint('love', 'enable')
         self.LOVE_TIP = self.CONFIG.get('love', 'tip').encode('utf8').decode('unicode-escape').split('|')
 
-        self.HOSTS = getattr(collections, 'OrderedDict', dict)(self.CONFIG.items('hosts'))
-        self.HOSTS_MATCH = collections.OrderedDict((re.compile(k).search, v) for k, v in self.HOSTS.items() if not re.search(r'\d+$', k))
-        self.HOSTS_CONNECT_MATCH = collections.OrderedDict((re.compile(k).search, v) for k, v in self.HOSTS.items() if re.search(r'\d+$', k))
+        DictType = getattr(collections, 'OrderedDict', dict)
+        self.HOSTS = DictType(self.CONFIG.items('hosts'))
+        for key, value in self.HOSTS.items():
+            m = re.match(r'\[(\w+)\](\w+)', value)
+            if m:
+                self.HOSTS[key] = self.CONFIG.get(m.group(1), m.group(2))
+        self.HOSTS_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if not re.search(r'\d+$', k))
+        self.HOSTS_CONNECT_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if re.search(r'\d+$', k))
 
         self.GOOGLE_USEFAKEHTTPS = self.CONFIG.getint(self.GAE_PROFILE, 'usefakehttps') if self.CONFIG.has_option(self.GAE_PROFILE, 'usefakehttps') else 0        
         self.GOOGLE_FAKEHTTPS = tuple(x for x in (self.CONFIG.get(self.GAE_PROFILE, 'fakehttps') if self.GOOGLE_USEFAKEHTTPS==1 else '').split('|') if x)
@@ -1323,7 +1431,6 @@ class Common(object):
         self.FIRST_SWITCH  = True
 
         random.shuffle(self.GAE_APPIDS)
-
         self.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (self.GOOGLE_MODE, self.GAE_APPIDS[0], self.GAE_PATH)
 
     def info(self):
@@ -1551,6 +1658,8 @@ class RangeFetch(object):
                     continue
                 except Exception as e:
                     logging.warning("Response %r in __fetchlet", e)
+                    range_queue.put((start, end, None))
+                    continue
                 if not response:
                     logging.warning('RangeFetch %s return %r', headers['Range'], response)
                     range_queue.put((start, end, None))
@@ -1635,7 +1744,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     first_run_lock = threading.Lock()
     urlfetch = staticmethod(gae_urlfetch)
     normcookie = functools.partial(re.compile(', ([^ =]+(?:=|$))').sub, '\\r\\nSet-Cookie: \\1')
-    normattachment = functools.partial(re.compile(r'filename=(.+)').sub, 'filename="\\1"')
+    normattachment = functools.partial(re.compile(r'filename=(.+?)').sub, 'filename="\\1"')
 
     def _update_google_iplist(self):
         if any(not re.match(r'\d+\.\d+\.\d+\.\d+', x) for x in common.GOOGLE_HOSTS):
@@ -1715,9 +1824,9 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         need_switch = True
                         break
                 average_timing = 1000 * connect_timing / len(sample_hosts)
-                #if average_timing > 768:
+                if average_timing > 768:
                     # avg connect time large than 768 ms, need switch
-                    #need_switch = True
+                    need_switch = True
                 logging.info('speedtest google_cn iplist average_timing=%0.2f ms, need_switch=%r', average_timing, need_switch)
                 if need_switch:
                     common.GAE_PROFILE = 'google_hk'
@@ -1801,7 +1910,8 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             payload = self.rfile.read(content_length) if content_length else b''
             if common.HOSTS_MATCH and any(x(self.path) for x in common.HOSTS_MATCH):
-                realhost = next(common.HOSTS_MATCH[x] for x in common.HOSTS_MATCH if x(self.path)) or re.sub(r':\d+$', '', self.parsed_url.netloc)
+                realhosts = next(common.HOSTS_MATCH[x] for x in common.HOSTS_MATCH if x(self.path)) or re.sub(r':\d+$', '', self.parsed_url.netloc)
+                realhost = random.choice(realhosts.split('|'))
                 logging.debug('hosts pattern mathed, url=%r realhost=%r', self.path, realhost)
                 response = http_util.request(self.command, self.path, payload, self.headers, realhost=realhost, crlf=common.GAE_CRLF)
             else:
@@ -1811,7 +1921,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logging.info('%s "FWD %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
             if response.status in (400, 405):
                 common.GAE_CRLF = 0
-            self.wfile.write(('HTTP/1.1 %s\r\n%s\r\n' % (response.status, ''.join('%s: %s\r\n' % (k.title(), v) for k, v in response.getheaders() if k.title() != 'Transfer-Encoding'))).encode())
+            self.wfile.write(('HTTP/1.1 %s\r\n%s\r\n' % (response.status, ''.join('%s: %s\r\n' % (k.title(), v) for k, v in response.getheaders() if k.title() != 'Transfer-Encoding'))))
             while 1:
                 data = response.read(8192)
                 if not data:
@@ -1980,9 +2090,9 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if common.HOSTS_CONNECT_MATCH and any(x(self.path) for x in common.HOSTS_CONNECT_MATCH):
             if host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE):
                 http_util.dns.pop(host, None)
-            realhost = next(common.HOSTS_CONNECT_MATCH[x] for x in common.HOSTS_CONNECT_MATCH if x(self.path))
-            if realhost:
-                http_util.dns[host] = list(set(sum([socket.gethostbyname_ex(x)[-1] for x in realhost.split('|')], [])))
+            realhosts = next(common.HOSTS_CONNECT_MATCH[x] for x in common.HOSTS_CONNECT_MATCH if x(self.path))
+            if realhosts:
+                http_util.dns[host] = list(set(sum([socket.gethostbyname_ex(x)[-1] for x in realhosts.split('|')], [])))
             self.do_CONNECT_FWD()
         elif host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE) and (not host.endswith(common.GOOGLE_FAKEHTTPS) or host.endswith(common.GOOGLE_NOFAKEHTTPS)):
             http_util.dns[host] = common.GOOGLE_HOSTS
@@ -2037,15 +2147,16 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.__realconnection = None
         self.wfile.write(b'HTTP/1.1 200 OK\r\n\r\n')
         try:
-            if not http_util.ssl_validate and not http_util.ssl_obfuscate:
-                ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
-            else:
-                ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
-                ssl_context.use_privatekey_file(certfile)
-                ssl_context.use_certificate_file(certfile)
-                ssl_sock = SSLConnection(ssl_context, self.connection)
-                ssl_sock.set_accept_state()
-                ssl_sock.do_handshake()
+            ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
+            # if not http_util.ssl_validate and not http_util.ssl_obfuscate:
+            #     ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
+            # else:
+            #     ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
+            #     ssl_context.use_privatekey_file(certfile)
+            #     ssl_context.use_certificate_file(certfile)
+            #     ssl_sock = SSLConnection(ssl_context, self.connection)
+            #     ssl_sock.set_accept_state()
+            #     ssl_sock.do_handshake()
         except Exception as e:
             if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET):
                 logging.exception('ssl.wrap_socket(self.connection=%r) failed: %s', self.connection, e)
@@ -2165,7 +2276,7 @@ class PAASProxyHandler(GAEProxyHandler):
         self.__class__.do_HEAD = self.__class__.do_METHOD
         self.__class__.do_DELETE = self.__class__.do_METHOD
         self.__class__.do_OPTIONS = self.__class__.do_METHOD
-        self.__class__.do_CONNECT = GAEProxyHandler.do_CONNECT_AGENT
+        self.__class__.do_CONNECT = GAEProxyHandler.do_CONNECT_PROCESS
         self.setup()
 
     def do_METHOD(self):
@@ -2224,7 +2335,7 @@ class PAASProxyHandler(GAEProxyHandler):
 
 class PACServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
-    pacfile = os.path.join(os.path.dirname(__file__), common.PAC_FILE)
+    pacfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), common.PAC_FILE)
     onepixel = b'GIF89a\x01\x00\x01\x00\x80\xff\x00\xc0\xc0\xc0\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
 
     def address_string(self):
@@ -2237,7 +2348,7 @@ class PACServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         filename = os.path.normpath('./' + urlparse.urlparse(self.path).path)
         if self.path.startswith(('http://', 'https://')):
             data = b'HTTP/1.1 200\r\nCache-Control: max-age=86400\r\nExpires:Oct, 01 Aug 2100 00:00:00 GMT\r\nConnection: close\r\n'
-            if self.path.endswith(('.jpg', '.gif', '.jpeg', '.bmp')):
+            if filename.endswith(('.jpg', '.gif', '.jpeg', '.bmp')):
                 data += b'Content-Type: image/gif\r\n\r\n' + self.onepixel
             else:
                 data += b'\r\n'
@@ -2249,9 +2360,9 @@ class PACServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             else:
                 mimetype = 'application/octet-stream'
             if self.path.endswith('.pac?flush'):
-                thread.start_new_thread(PacUtil.update_pacfile, args=(self.pacfile,))
+                thread.start_new_thread(PacUtil.update_pacfile, (self.pacfile,))
             elif time.time() - os.path.getmtime(self.pacfile) > common.PAC_EXPIRED:
-                thread.start_new_thread(lambda: os.utime(self.pacfile, (time.time(), time.time())) or PacUtil.update_pacfile(self.pacfile))
+                thread.start_new_thread(lambda: os.utime(self.pacfile, (time.time(), time.time())) or PacUtil.update_pacfile(self.pacfile), tuple())
             self.send_file(filename, mimetype)
         else:
             self.wfile.write(b'HTTP/1.1 404\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n404 Not Found')
@@ -2363,13 +2474,13 @@ def pre_start():
     if sys.platform == 'cygwin':
         logging.info('cygwin is not officially supported, please continue at your own risk :)')
         #sys.exit(-1)
-    if os.name == 'posix':
+    elif os.name == 'posix':
         try:
             import resource
             resource.setrlimit(resource.RLIMIT_NOFILE, (8192, -1))
         except ValueError:
             pass
-    if os.name == 'nt':
+    elif os.name == 'nt':
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(u'GoAgent v%s' % __version__)
         if not common.LISTEN_VISIBLE:
