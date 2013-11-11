@@ -1535,6 +1535,13 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
             # filter by some firewall
             common.GAE_CRLF = 0
         return response
+        if response.status == 403:
+            sock = getattr(response.fp, '_sock', None)
+            if sock:
+                ipaddr = sock.getpeername()[0]
+                logging.warn('http_util.request fetchserver=%r return 403, remove %r from GAE_HOSTS', fetchserver, ipaddr)
+                common.GOOGLE_HOSTS.remove(ipaddr)
+            del sock
     data = response.read(4)
     if len(data) < 4:
         response.status = 502
