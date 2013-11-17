@@ -2224,7 +2224,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if realhosts:
                 http_util.dns[host] = list(set(sum([socket.gethostbyname_ex(x)[-1] for x in realhosts.split('|')], [])))
             self.do_CONNECT_FWD()
-        elif host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE) and (not host.endswith(common.GOOGLE_FAKEHTTPS) or host.endswith(common.GOOGLE_NOFAKEHTTPS)):
+        elif host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE) and (not host.endswith(common.GOOGLE_FAKEHTTPS) or host.endswith(common.GOOGLE_NOFAKEHTTPS))):
             http_util.dns[host] = common.GOOGLE_HOSTS
             self.do_CONNECT_FWD()
         else:
