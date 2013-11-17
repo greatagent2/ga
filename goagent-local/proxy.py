@@ -2218,13 +2218,13 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         """handle CONNECT cmmand, socket forward or deploy a fake cert"""
         host, _, port = self.path.rpartition(':')
         if common.HOSTS_CONNECT_MATCH and any(x(self.path) for x in common.HOSTS_CONNECT_MATCH):
-            if host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE:
+            if host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE):
                 http_util.dns.pop(host, None)
             realhosts = next(common.HOSTS_CONNECT_MATCH[x] for x in common.HOSTS_CONNECT_MATCH if x(self.path))
             if realhosts:
                 http_util.dns[host] = list(set(sum([socket.gethostbyname_ex(x)[-1] for x in realhosts.split('|')], [])))
             self.do_CONNECT_FWD()
-        elif host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE) and (not host.endswith(common.GOOGLE_FAKEHTTPS) or host.endswith(common.GOOGLE_NOFAKEHTTPS))):
+        elif host.endswith(common.GOOGLE_SITES) and not host.endswith(common.GOOGLE_WITHGAE) and (not host.endswith(common.GOOGLE_FAKEHTTPS) or host.endswith(common.GOOGLE_NOFAKEHTTPS)):
             http_util.dns[host] = common.GOOGLE_HOSTS
             self.do_CONNECT_FWD()
         else:
