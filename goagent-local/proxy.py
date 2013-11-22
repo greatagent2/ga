@@ -925,7 +925,8 @@ class HTTPUtil(object):
             self.dns[host] = iplist = list(set(iplist))
         return iplist
 
-    def create_connection(self, address, timeout=None, source_address=None):
+    def create_connection(self, address, timeout=None, source_address=None, **kwargs):
+        connection_cache_key = kwargs.get('cache_key') or address
         def _create_connection(address, timeout, queobj):
             sock = None
             try:
@@ -947,7 +948,7 @@ class HTTPUtil(object):
                 self.tcp_connection_time[address] = time.time() - start_time
                 # put ssl socket object to output queobj
                 queobj.put(sock)
-            except (socket.error, ssl.SSLError, OSError) as e:
+            except (socket.error, OSError) as e:
                 # any socket.error, put Excpetions to output queobj.
                 queobj.put(e)
                 # reset a large and random timeout to the address
@@ -955,10 +956,20 @@ class HTTPUtil(object):
                 # close tcp socket
                 if sock:
                     sock.close()
-
         def _close_connection(count, queobj):
-            for _ in range(count):
-                queobj.get()
+            for i in range(count):
+                sock = queobj.get()
+                if sock and not isinstance(sock, Exception):
+                    if i == 0:
+                        self.ssl_connection_cache[connection_cache_key].put((time.time(), sock))
+                    else:
+                        sock.close()
+        try:
+            ctime, sock = self.ssl_connection_cache[connection_cache_key].get_nowait()
+            if time.time() - ctime < 30:
+                return sock
+        except Queue.Empty:
+            pass
         host, port = address
         result = None
         addresses = [(x, port) for x in self.dns_resolve(host)]
@@ -984,7 +995,8 @@ class HTTPUtil(object):
                         # only output first error
                         logging.warning('create_connection to %s return %r, try again.', addrs, result)
 
-    def create_ssl_connection(self, address, timeout=None, source_address=None):
+    def create_ssl_connection(self, address, timeout=None, source_address=None, **kwargs):
+        connection_cache_key = kwargs.get('cache_key') or address
         def _create_ssl_connection(ipaddr, timeout, queobj):
             sock = None
             ssl_sock = None
@@ -1097,11 +1109,11 @@ class HTTPUtil(object):
                 sock = queobj.get()
                 if sock and not isinstance(sock, Exception):
                     if i == 0:
-                        self.ssl_connection_cache[address].put((time.time(), sock))
+                        self.ssl_connection_cache[connection_cache_key].put((time.time(), sock))
                     else:
                         sock.close()
         try:
-            ctime, sock = self.ssl_connection_cache[address].get_nowait()
+            ctime, sock = self.ssl_connection_cache[connection_cache_key].get_nowait()
             if time.time() - ctime < 30:
                 return sock
         except Queue.Empty:
@@ -1270,7 +1282,7 @@ class HTTPUtil(object):
             response = None
         return response
 
-    def request(self, method, url, payload=None, headers={}, realhost='', fullurl=False, bufsize=8192, crlf=None, return_sock=None):
+    def request(self, method, url, payload=None, headers={}, realhost='', fullurl=False, bufsize=8192, crlf=None, return_sock=None, connection_cache_key=None):
         scheme, netloc, path, _, query, _ = urlparse.urlparse(url)
         if netloc.rfind(':') <= netloc.rfind(']'):
             # no port number
@@ -1290,14 +1302,14 @@ class HTTPUtil(object):
             try:
                 if not self.proxy:
                     if scheme == 'https':
-                        ssl_sock = self.create_ssl_connection((realhost or host, port), self.max_timeout)
+                        ssl_sock = self.create_ssl_connection((realhost or host, port), self.max_timeout, cache_key=connection_cache_key)
                         if ssl_sock:
                             sock = ssl_sock.sock
                             del ssl_sock.sock
                         else:
                             raise socket.error('timed out', 'create_ssl_connection(%r,%r)' % (realhost or host, port))
                     else:
-                        sock = self.create_connection((realhost or host, port), self.max_timeout)
+                        sock = self.create_connection((realhost or host, port), self.max_timeout, cache_key=connection_cache_key)
                 else:
                     sock = self.create_connection_withproxy((realhost or host, port), port, self.max_timeout, proxy=self.proxy)
                     path = url
@@ -1397,6 +1409,9 @@ class Common(object):
         self.GOOGLE_SITES = tuple(x for x in self.CONFIG.get(self.GAE_PROFILE, 'sites').split('|') if x)
         self.GOOGLE_FORCEHTTPS = tuple('http://'+x for x in self.CONFIG.get(self.GAE_PROFILE, 'forcehttps').split('|') if x)
         self.GOOGLE_WITHGAE = tuple(x for x in self.CONFIG.get(self.GAE_PROFILE, 'withgae').split('|') if x)
+        self.GOOGLE_USEFAKEHTTPS = self.CONFIG.getint(self.GAE_PROFILE, 'usefakehttps') if self.CONFIG.has_option(self.GAE_PROFILE, 'usefakehttps') else 0        
+        self.GOOGLE_FAKEHTTPS = tuple(x for x in (self.CONFIG.get(self.GAE_PROFILE, 'fakehttps') if self.GOOGLE_USEFAKEHTTPS==1 else '').split('|') if x)
+        self.GOOGLE_NOFAKEHTTPS = tuple(x for x in (self.CONFIG.get(self.GAE_PROFILE, 'nofakehttps') if self.GOOGLE_USEFAKEHTTPS==1 else '').split('|') if x)
 
         self.AUTORANGE_HOSTS = self.CONFIG.get('autorange', 'hosts').split('|')
         self.AUTORANGE_HOSTS_MATCH = [re.compile(fnmatch.translate(h)).match for h in self.AUTORANGE_HOSTS]
@@ -1442,10 +1457,6 @@ class Common(object):
         self.HOSTS_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if not re.search(r'\d+$', k))
         self.HOSTS_CONNECT_MATCH = DictType((re.compile(k).search, v) for k, v in self.HOSTS.items() if re.search(r'\d+$', k))
 
-        self.GOOGLE_USEFAKEHTTPS = self.CONFIG.getint(self.GAE_PROFILE, 'usefakehttps') if self.CONFIG.has_option(self.GAE_PROFILE, 'usefakehttps') else 0        
-        self.GOOGLE_FAKEHTTPS = tuple(x for x in (self.CONFIG.get(self.GAE_PROFILE, 'fakehttps') if self.GOOGLE_USEFAKEHTTPS==1 else '').split('|') if x)
-        self.GOOGLE_NOFAKEHTTPS = tuple(x for x in (self.CONFIG.get(self.GAE_PROFILE, 'nofakehttps') if self.GOOGLE_USEFAKEHTTPS==1 else '').split('|') if x)
-        
         random.shuffle(self.GAE_APPIDS)
         self.GAE_FETCHSERVER = '%s://%s.appspot.com%s?' % (self.GAE_MODE, self.GAE_APPIDS[0], self.GAE_PATH)
 
@@ -1652,7 +1663,7 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
         request_headers['Content-Length'] = str(len(payload))
     # post data
     need_crlf = 0 if common.GAE_MODE == 'https' else common.GAE_CRLF
-    response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf)
+    response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, connection_cache_key='*.appspot.com')
     response.app_status = response.status
     response.app_options = response.getheader('X-GOA-Options', '')
     if response.status != 200:
@@ -1880,7 +1891,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     first_run_lock = threading.Lock()
     urlfetch = staticmethod(gae_urlfetch)
     normcookie = functools.partial(re.compile(', ([^ =]+(?:=|$))').sub, '\\r\\nSet-Cookie: \\1')
-    normattachment = functools.partial(re.compile(r'filename=(.+?)').sub, 'filename="\\1"')
 
     @staticmethod
     def resolve_google_iplist(google_hosts):
@@ -2252,7 +2262,8 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             for i in range(5):
                 try:
                     timeout = 4
-                    remote = http_util.create_connection((host, port), timeout)
+                    connection_cache_key = '*.google.com' if host.endswith(common.GOOGLE_SITES) else ''
+                    remote = http_util.create_connection((host, port), timeout, cache_key=connection_cache_key)
                     if remote is not None and data:
                         remote.sendall(data)
                         break
@@ -2416,7 +2427,7 @@ class PAASProxyHandler(GAEProxyHandler):
         self.__class__.do_HEAD = self.__class__.do_METHOD
         self.__class__.do_DELETE = self.__class__.do_METHOD
         self.__class__.do_OPTIONS = self.__class__.do_METHOD
-        self.__class__.do_CONNECT = GAEProxyHandler.do_CONNECT_AGENT
+        self.__class__.do_CONNECT = GAEProxyHandler.do_CONNECT_PROCESS
         self.setup()
 
     def do_METHOD(self):
