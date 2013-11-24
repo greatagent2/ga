@@ -889,6 +889,7 @@ class HTTPUtil(object):
         self.max_retry = max_retry
         self.max_timeout = max_timeout
         self.tcp_connection_time = collections.defaultdict(float)
+        self.tcp_connection_cache = collections.defaultdict(Queue.PriorityQueue)
         self.ssl_connection_time = collections.defaultdict(float)
         self.ssl_connection_cache = collections.defaultdict(Queue.PriorityQueue)
         self.max_timeout = max_timeout
@@ -961,11 +962,11 @@ class HTTPUtil(object):
                 sock = queobj.get()
                 if sock and not isinstance(sock, Exception):
                     if i == 0:
-                        self.ssl_connection_cache[connection_cache_key].put((time.time(), sock))
+                        self.tcp_connection_cache[connection_cache_key].put((time.time(), sock))
                     else:
                         sock.close()
         try:
-            ctime, sock = self.ssl_connection_cache[connection_cache_key].get_nowait()
+            ctime, sock = self.tcp_connection_cache[connection_cache_key].get_nowait()
             if time.time() - ctime < 30:
                 return sock
         except Queue.Empty:
@@ -1631,10 +1632,10 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
         from Crypto.Random.random import StrongRandom
         rsakey = RSA.importKey(__RSA_KEY__.strip())
         rsakey = PKCS1_OAEP.new(rsakey)
-        rc4_cookie_key = base64.b64encode(read_random_bits(128))
-        rc4_payload_key = base64.b64encode(read_random_bits(128))
-        rc4_response_msg_key = base64.b64encode(read_random_bits(128))
-        rc4_response_fp_key = base64.b64encode(read_random_bits(128))
+        rc4_cookie_key = base64.b64encode(read_random_bits(256))
+        rc4_payload_key = base64.b64encode(read_random_bits(256))
+        rc4_response_msg_key = base64.b64encode(read_random_bits(256))
+        rc4_response_fp_key = base64.b64encode(read_random_bits(256))
         rc4_keys = rc4_cookie_key + '|' + rc4_payload_key + '|' + rc4_response_msg_key + '|' + rc4_response_fp_key
         request_headers['X-GOA-KEYS'] = base64.b64encode(rsakey.encrypt(rc4_keys))
     else:
@@ -1662,8 +1663,13 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
             payload = rc4crypt(payload, rc4_payload_key)
         request_headers['Content-Length'] = str(len(payload))
     # post data
-    need_crlf = 0 if common.GAE_MODE == 'https' else common.GAE_CRLF
-    response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, connection_cache_key='*.appspot.com')
+    if common.GAE_MODE == 'https':
+        need_crlf = 0
+        connection_cache_key = '*.appspot.com:443'
+    else:
+        need_crlf = 1
+        connection_cache_key = '*.appspot.com:80'
+    response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, connection_cache_key=connection_cache_key)
     response.app_status = response.status
     response.app_options = response.getheader('X-GOA-Options', '')
     if response.status != 200:
@@ -2262,7 +2268,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             for i in range(5):
                 try:
                     timeout = 4
-                    connection_cache_key = '*.google.com' if host.endswith(common.GOOGLE_SITES) else ''
+                    connection_cache_key = '*.google.com:%d' % port if host.endswith(common.GOOGLE_SITES) else ''
                     remote = http_util.create_connection((host, port), timeout, cache_key=connection_cache_key)
                     if remote is not None and data:
                         remote.sendall(data)
