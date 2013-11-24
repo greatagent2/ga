@@ -1669,7 +1669,10 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
     else:
         need_crlf = 1
         connection_cache_key = '*.appspot.com:80'
-    response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, connection_cache_key=connection_cache_key)
+    while 1:
+        response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, connection_cache_key=connection_cache_key)
+        if response:
+            break
     response.app_status = response.status
     response.app_options = response.getheader('X-GOA-Options', '')
     if response.status != 200:
