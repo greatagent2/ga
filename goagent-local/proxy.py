@@ -35,23 +35,18 @@
 #      cuixin            <steven.cuixin@gmail.com>
 
 __version__ = '3.0.9a'
-__RSA_KEY__ = '''
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArJEbzQihNeOMMjFkAx7J
-Ad0EMxjwxK7h5v0WUPX5Gd94tHBblvxCqttLi2qZCLhm3LCuskOs7GrLh68U84K1
-VTW9IH//jA8HR7cJkKGLdnZE51OEg6KPSve/okBf7rSCcdjj1a55GWTtIOnHFMNb
-nsfWK6drIigdKZSnKL4INYa8de0YUQyEhsUwmMhTWndoMXR2vVUK/2Tm+z5QvF+L
-h3WT7UbMwzZhtEO/4givqrgHeBnHQg1QZThAj2Mgw5QGjfAdWbCaOerZbEzEGAyY
-YyTC1LuH3nxgmy8PBpxQM8Q7ugDET4Tyl3s5ZlLoSuMRAh5n1lPa0OPNky4xJINL
-RwIDAQAB
------END PUBLIC KEY-----
-'''
 
 import sys
 import os
 import glob
 
 sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
+
+sys.dont_write_bytecode = True
+try:
+    from key_config import __RSA_KEY__
+except (ImportError, SystemError):
+    __RSA_KEY__ = None
 
 try:
     import gevent
