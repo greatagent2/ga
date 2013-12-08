@@ -224,12 +224,12 @@ def main():
 	common.writeconfig('google_cn','hosts','')
 	check_ip.run(__filename__,'203.208.',46,46)
 	common.writeips('google_cn','hosts')
-	if common.getconfig('google_cn','hosts') == '' :
-		print 'Can\'t Find Google Cn Ip,Change To Google_hk'
-		common.writeconfig('gae','profile','google_hk')
-	else :
-		common.writeconfig('gae','profile','google_cn')
-		print 'Find Google Cn Ip Successful,Change To Google_cn'
+	# if common.getconfig('google_cn','hosts') == '' :
+		# print 'Can\'t Find Google Cn Ip,Change To Google_hk'
+		# common.writeconfig('gae','profile','google_hk')
+	# else :
+		# common.writeconfig('gae','profile','google_cn')
+		# print 'Find Google Cn Ip Successful,Change To Google_cn'
 	if need_google_hk:
 		common.writeline()
 		common.write('Google Hk Ip:')
