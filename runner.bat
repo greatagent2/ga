@@ -4,7 +4,7 @@ cd /D "%~dp0"
 :: Step2 - Start GoAgent
 echo Starting GoAgent...
 cd goagent-local
-python27.exe check_google_ip.py
+rem python27.exe check_google_ip.py
 start goagent.exe
 cd..
 
