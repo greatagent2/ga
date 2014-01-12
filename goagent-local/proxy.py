@@ -1762,7 +1762,7 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
         crypt_cookie_key = kwargs.get('password')
         crypt_payload_key = kwargs.get('password')
         crypt_response_msg_key = kwargs.get('password')
-        rc4_response_fp_key = kwargs.get('password')
+        crypt_response_fp_key = kwargs.get('password')
     if common.GAE_OBFUSCATE:
         if 'rc4' in common.GAE_OPTIONS:
             request_headers['X-GOA-Options'] = 'rc4'
