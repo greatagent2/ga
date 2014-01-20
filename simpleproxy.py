@@ -158,22 +158,11 @@ class Common(object):
 		self.GAE_USEFAKEHTTPS = self.CONFIG.getint('google', 'usefakehttps') if self.CONFIG.has_option('google', 'usefakehttps') else 0
 
 		self.PROXY_ENABLE = self.CONFIG.getint('proxy', 'enable')
-		self.PROXY_AUTODETECT = 0
 		self.PROXY_HOST = self.CONFIG.get('proxy', 'host')
 		self.PROXY_PORT = self.CONFIG.getint('proxy', 'port')
 		self.PROXY_USERNAME = self.CONFIG.get('proxy', 'username')
 		self.PROXY_PASSWROD = self.CONFIG.get('proxy', 'password')
 
-		if not self.PROXY_ENABLE and self.PROXY_AUTODETECT:
-			system_proxy = ProxyUtil.get_system_proxy()
-			if system_proxy and self.LISTEN_IP not in system_proxy:
-				_, username, password, address = ProxyUtil.parse_proxy(system_proxy)
-				proxyhost, _, proxyport = address.rpartition(':')
-				self.PROXY_ENABLE = 1
-				self.PROXY_USERNAME = username
-				self.PROXY_PASSWROD = password
-				self.PROXY_HOST = proxyhost
-				self.PROXY_PORT = int(proxyport)
 		if self.PROXY_ENABLE:
 			self.GOOGLE_MODE = 'https'
 			self.proxy = 'https://%s:%s@%s:%d' % (self.PROXY_USERNAME or '', self.PROXY_PASSWROD or '', self.PROXY_HOST, self.PROXY_PORT)
@@ -1193,10 +1182,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 	def first_run(self):
 		"""GAEProxyHandler setup, init domain/iplist map"""
-		if common.GAE_PROFILE == 'google_ipv6' or common.PROXY_ENABLE:
-			for appid in common.GAE_APPIDS:
-				http_util.dns['%s.appspot.com' % appid] = list(set(common.GOOGLE_HOSTS))
-		elif not common.PROXY_ENABLE:
+		if not common.PROXY_ENABLE:
 			logging.debug('resolve common.GOOGLE_HOSTS domain=%r to iplist', common.GOOGLE_HOSTS)
 			if common.GAE_PROFILE == 'google_cn':
 				hosts = ('www.google.cn', 'www.g.cn','ditu.google.cn',"www.google-analytics.com","ssl.google-analytics.com","www.google.com","mail.google.com","www.android.com")
