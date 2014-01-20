@@ -34,8 +34,9 @@
 #      cnfuyu            <cnfuyu@gmail.com>
 #      cuixin            <steven.cuixin@gmail.com>
 #      s2marine0         <s2marine0@gmail.com>
+#      Toshio Xiang      <snachx@gmail.com>
 
-__version__ = '3.1.4'
+__version__ = '3.1.5'
 
 import sys
 import os
@@ -927,7 +928,7 @@ class HTTPUtil(object):
                             'DES-CBC3-SHA',
                             'TLS_EMPTY_RENEGOTIATION_INFO_SCSV'])
 
-    def __init__(self, max_window=4, max_timeout=8, max_retry=4, proxy='', ssl_validate=False, ssl_obfuscate=False):
+    def __init__(self, max_window=4, max_timeout=8, max_retry=4, proxy=''):
         # http://docs.python.org/dev/library/ssl.html
         # http://blog.ivanristic.com/2009/07/examples-of-the-information-collected-from-ssl-handshakes.html
         # http://src.chromium.org/svn/trunk/src/net/third_party/nss/ssl/sslenum.c
@@ -941,28 +942,26 @@ class HTTPUtil(object):
         self.tcp_connection_cache = collections.defaultdict(Queue.PriorityQueue)
         self.ssl_connection_time = collections.defaultdict(float)
         self.ssl_connection_cache = collections.defaultdict(Queue.PriorityQueue)
-        self.max_timeout = max_timeout
         self.dns = {}
         self.proxy = proxy
-        self.ssl_validate = ssl_validate or self.ssl_validate
-        self.ssl_obfuscate = ssl_obfuscate or self.ssl_obfuscate
-        if self.ssl_validate or self.ssl_obfuscate:
-            self.ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
-            self.ssl_context.set_session_id(binascii.b2a_hex(os.urandom(10)))
-            if hasattr(OpenSSL.SSL, 'SESS_CACHE_BOTH'):
-                self.ssl_context.set_session_cache_mode(OpenSSL.SSL.SESS_CACHE_BOTH)
-        else:
-            self.ssl_context = None
-        if self.ssl_validate:
-            self.ssl_context.load_verify_locations(os.path.join(os.path.dirname(os.path.abspath(__file__)),'cacert.pem'))
-            self.ssl_context.set_verify(OpenSSL.SSL.VERIFY_PEER, lambda c, x, e, d, ok: ok)
-        if self.ssl_obfuscate:
-            self.ssl_ciphers = ':'.join(x for x in self.ssl_ciphers.split(':') if random.random() > 0.5)
-            self.ssl_context.set_cipher_list(self.ssl_ciphers)
+        self.openssl_context = None
         if self.proxy:
             self.dns_resolve = self.__dns_resolve_withproxy
             self.create_connection = self.__create_connection_withproxy
             self.create_ssl_connection = self.__create_ssl_connection_withproxy
+
+    def set_openssl_option(self, validate=True, obfuscate=True):
+        if self.openssl_context is None:
+            self.openssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
+            self.openssl_context.set_session_id(binascii.b2a_hex(os.urandom(10)))
+            if hasattr(OpenSSL.SSL, 'SESS_CACHE_BOTH'):
+                self.openssl_context.set_session_cache_mode(OpenSSL.SSL.SESS_CACHE_BOTH)
+        if validate:
+            self.openssl_context.load_verify_locations(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cacert.pem'))
+            self.openssl_context.set_verify(OpenSSL.SSL.VERIFY_PEER, lambda c, x, e, d, ok: ok)
+        if obfuscate:
+            ssl_ciphers = ':'.join(x for x in self.ssl_ciphers.split(':') if random.random() > 0.5)
+            self.openssl_context.set_cipher_list(ssl_ciphers)
 
     def dns_resolve(self, host, dnsserver='', ipv4_only=True):
         iplist = self.dns.get(host)
@@ -1037,7 +1036,7 @@ class HTTPUtil(object):
         for i in range(self.max_retry):
             window = min((self.max_window+1)//2 + i, len(addresses))
             addresses.sort(key=get_connection_time)
-            addrs = addresses[:window] + random.sample(addresses, window)
+            addrs = addresses[:window] + random.sample(addresses, min(len(addresses), window, self.max_window-window))
             queobj = Queue.Queue()
             for addr in addrs:
                 thread.start_new_thread(_create_connection, (addr, timeout, queobj))
@@ -1053,6 +1052,7 @@ class HTTPUtil(object):
 
     def create_ssl_connection(self, address, timeout=None, source_address=None, **kwargs):
         connection_cache_key = kwargs.get('cache_key')
+        validate = kwargs.get('validate')
         def _create_ssl_connection(ipaddr, timeout, queobj):
             sock = None
             ssl_sock = None
@@ -1068,7 +1068,7 @@ class HTTPUtil(object):
                 # set a short timeout to trigger timeout retry more quickly.
                 sock.settimeout(timeout or self.max_timeout)
                 # pick up the certificate
-                if not self.ssl_validate:
+                if not validate:
                     ssl_sock = ssl.wrap_socket(sock, do_handshake_on_connect=False)
                 else:
                     ssl_sock = ssl.wrap_socket(sock, cert_reqs=ssl.CERT_REQUIRED, ca_certs=os.path.join(os.path.dirname(os.path.abspath(__file__)),'cacert.pem'), do_handshake_on_connect=False)
@@ -1089,7 +1089,7 @@ class HTTPUtil(object):
                 # sometimes, we want to use raw tcp socket directly(select/epoll), so setattr it to ssl socket.
                 ssl_sock.sock = sock
                 # verify SSL certificate.
-                if self.ssl_validate and address[0].endswith('.appspot.com'):
+                if validate and address[0].endswith('.appspot.com'):
                     cert = ssl_sock.getpeercert()
                     orgname = next((v for ((k, v),) in cert['subject'] if k == 'organizationName'))
                     if not orgname.lower().startswith('google '):
@@ -1123,7 +1123,7 @@ class HTTPUtil(object):
                 sock.settimeout(timeout or self.max_timeout)
                 # pick up the certificate
                 server_hostname = b'www.google.com' if address[0].endswith('.appspot.com') else None
-                ssl_sock = SSLConnection(self.ssl_context, sock)
+                ssl_sock = SSLConnection(self.openssl_context, sock)
                 ssl_sock.set_connect_state()
                 if server_hostname:
                     ssl_sock.set_tlsext_host_name(server_hostname)
@@ -1142,7 +1142,7 @@ class HTTPUtil(object):
                 # sometimes, we want to use raw tcp socket directly(select/epoll), so setattr it to ssl socket.
                 ssl_sock.sock = sock
                 # verify SSL certificate.
-                if self.ssl_validate and address[0].endswith('.appspot.com'):
+                if validate and address[0].endswith('.appspot.com'):
                     cert = ssl_sock.get_peer_certificate()
                     commonname = next((v for k, v in cert.get_subject().get_components() if k == 'CN'))
                     if '.google' not in commonname and not commonname.endswith('.appspot.com'):
@@ -1178,13 +1178,13 @@ class HTTPUtil(object):
             pass
         host, port = address
         result = None
-        # create_connection = _create_ssl_connection if not self.ssl_obfuscate and not self.ssl_validate else _create_openssl_connection
+        # create_connection = _create_ssl_connection if not validate else _create_openssl_connection
         create_connection = _create_ssl_connection
         addresses = [(x, port) for x in self.dns_resolve(host)]
         for i in range(self.max_retry):
             window = min((self.max_window+1)//2 + i, len(addresses))
             addresses.sort(key=self.ssl_connection_time.__getitem__)
-            addrs = addresses[:window] + random.sample(addresses, window)
+            addrs = addresses[:window] + random.sample(addresses, min(len(addresses), window, self.max_window-window))
             queobj = Queue.Queue()
             for addr in addrs:
                 thread.start_new_thread(create_connection, (addr, timeout, queobj))
@@ -1343,7 +1343,7 @@ class HTTPUtil(object):
             response = None
         return response
 
-    def request(self, method, url, payload=None, headers={}, realhost='', bufsize=8192, crlf=None, return_sock=None, connection_cache_key=None):
+    def request(self, method, url, payload=None, headers={}, realhost='', bufsize=8192, crlf=None, validate=None, return_sock=None, connection_cache_key=None):
         scheme, netloc, path, _, query, _ = urlparse.urlparse(url)
         if netloc.rfind(':') <= netloc.rfind(']'):
             # no port number
@@ -1365,7 +1365,7 @@ class HTTPUtil(object):
             ssl_sock = None
             try:
                 if scheme == 'https':
-                    ssl_sock = self.create_ssl_connection((realhost or host, port), self.max_timeout, cache_key=connection_cache_key)
+                    ssl_sock = self.create_ssl_connection((realhost or host, port), self.max_timeout, validate=validate, cache_key=connection_cache_key)
                     if ssl_sock:
                         sock = ssl_sock.sock
                         del ssl_sock.sock
@@ -1462,22 +1462,11 @@ class Common(object):
         self.PHP_USEHOSTS = self.CONFIG.getint('php', 'usehosts')
 
         self.PROXY_ENABLE = self.CONFIG.getint('proxy', 'enable')
-        self.PROXY_AUTODETECT = self.CONFIG.getint('proxy', 'autodetect') if self.CONFIG.has_option('proxy', 'autodetect') else 0
         self.PROXY_HOST = self.CONFIG.get('proxy', 'host')
         self.PROXY_PORT = self.CONFIG.getint('proxy', 'port')
         self.PROXY_USERNAME = self.CONFIG.get('proxy', 'username')
         self.PROXY_PASSWROD = self.CONFIG.get('proxy', 'password')
 
-        if not self.PROXY_ENABLE and self.PROXY_AUTODETECT:
-            system_proxy = ProxyUtil.get_system_proxy()
-            if system_proxy and self.LISTEN_IP not in system_proxy:
-                _, username, password, address = ProxyUtil.parse_proxy(system_proxy)
-                proxyhost, _, proxyport = address.rpartition(':')
-                self.PROXY_ENABLE = 1
-                self.PROXY_USERNAME = username
-                self.PROXY_PASSWROD = password
-                self.PROXY_HOST = proxyhost
-                self.PROXY_PORT = int(proxyport)
         if self.PROXY_ENABLE:
             self.GAE_MODE = 'https'
             self.proxy = 'https://%s:%s@%s:%d' % (self.PROXY_USERNAME or '', self.PROXY_PASSWROD or '', self.PROXY_HOST, self.PROXY_PORT)
@@ -1603,7 +1592,7 @@ class Common(object):
         return info
 
 common = Common()
-http_util = HTTPUtil(max_window=common.GAE_WINDOW, ssl_validate=common.GAE_VALIDATE or common.PHP_VALIDATE, ssl_obfuscate=common.GAE_OBFUSCATE, proxy=common.proxy)
+http_util = HTTPUtil(max_window=common.GAE_WINDOW, proxy=common.proxy)
 
 
 def message_html(title, banner, detail=''):
@@ -1784,9 +1773,10 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
         request_headers['Content-Length'] = str(len(payload))
     # post data
     need_crlf = 0 if common.GAE_MODE == 'https' else 1
+    need_validate = common.GAE_VALIDATE
     connection_cache_key = '%s:%d' % (common.HOSTS_POSTFIX_MAP['.appspot.com'], 443 if common.GAE_MODE == 'https' else 80)
     while 1:
-        response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, connection_cache_key=connection_cache_key)
+        response = http_util.request(request_method, fetchserver, payload, request_headers, crlf=need_crlf, validate=need_validate, connection_cache_key=connection_cache_key)
         if response:
             break
     response.app_status = response.status
@@ -2067,6 +2057,8 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def first_run(self):
         """GAEProxyHandler setup, init domain/iplist map"""
+        if common.GAE_VALIDATE or common.GAE_OBFUSCATE:
+            http_util.set_openssl_option(validate=common.GAE_VALIDATE, obfuscate=common.GAE_OBFUSCATE)
         if not common.PROXY_ENABLE:
             if 'google_hk' in common.IPLIST_MAP:
                 # threading._start_new_thread(expand_google_hk_iplist, (common.IPLIST_MAP['google_hk'][:], 16))
@@ -2183,8 +2175,9 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 http_util.dns[host] = common.IPLIST_MAP[hostname]
             else:
                 http_util.dns[host] = sum((http_util.dns_resolve(x) for x in hostname.split('|')), [])
+            validate = common.GAE_VALIDATE if host not in common.HTTP_FAKEHTTPS else None
             connection_cache_key = hostname if host not in common.HTTP_FAKEHTTPS else None
-            response = http_util.request(self.command, self.path, payload, self.headers, crlf=need_crlf, connection_cache_key=connection_cache_key)
+            response = http_util.request(self.command, self.path, payload, self.headers, crlf=need_crlf, validate=validate, connection_cache_key=connection_cache_key)
             if not response:
                 return
             logging.info('%s "FWD %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
@@ -2423,21 +2416,24 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logging.info('%s "PROCESS %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
         self.__realconnection = None
         self.wfile.write(b'HTTP/1.1 200 OK\r\n\r\n')
-        try:
-            ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
-            # if not http_util.ssl_validate and not http_util.ssl_obfuscate:
-            #     ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
-            # else:
-            #     ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
-            #     ssl_context.use_privatekey_file(certfile)
-            #     ssl_context.use_certificate_file(certfile)
-            #     ssl_sock = SSLConnection(ssl_context, self.connection)
-            #     ssl_sock.set_accept_state()
-            #     ssl_sock.do_handshake()
-        except Exception as e:
-            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET):
-                logging.exception('ssl.wrap_socket(self.connection=%r) failed: %s', self.connection, e)
-            return
+        while 1:
+            try:
+                ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
+                break
+                # if not http_util.ssl_validate and not http_util.ssl_obfuscate:
+                #     ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
+                # else:
+                #     ssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
+                #     ssl_context.use_privatekey_file(certfile)
+                #     ssl_context.use_certificate_file(certfile)
+                #     ssl_sock = SSLConnection(ssl_context, self.connection)
+                #     ssl_sock.set_accept_state()
+                #     ssl_sock.do_handshake()
+            except Exception as e:
+                continue
+                # if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET):
+                    # logging.exception('ssl.wrap_socket(self.connection=%r) failed: %s', self.connection, e)
+                # return
         self.__realconnection = self.connection
         self.__realwfile = self.wfile
         self.__realrfile = self.rfile
