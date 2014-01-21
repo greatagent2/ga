@@ -60,7 +60,6 @@ class Updater(object):
 		print 'Getting	'+filename
 		#try:
 		file = self.opener.open(self.server+filename).read()
-		print file
 		print 'Get	'+filename+'				OK!'
 		#except urllib2.HTTPError as e:
 		#	print 'Get	'+filename+'				Fail!'
