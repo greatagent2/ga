@@ -51,7 +51,8 @@ class FileUtil(object):
 
 	@staticmethod
 	def delete_dir(dir):
-		shutil.rmtree(dir)
+		if os.path.exists(dir):
+			shutil.rmtree(dir)
 
 	@staticmethod
 	def if_has_file_remove(filename,showinfo = False):

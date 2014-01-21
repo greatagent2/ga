@@ -58,17 +58,25 @@ class Updater(object):
 		self.dir = dir
 	def netopen(self,filename):
 		print 'Getting	'+filename
+		#try:
 		file = self.opener.open(self.server+filename).read()
+		print file
 		print 'Get	'+filename+'				OK!'
+		#except urllib2.HTTPError as e:
+		#	print 'Get	'+filename+'				Fail!'
+		#	file = None
 		return file
 	def getfile(self,filename):
-		while 1:
+		for i in range(1, 3):
 			try:
 				file = self.netopen(filename)
-				return file
+				if file:
+					return file
+			except urllib2.HTTPError as e:
+				raise
 			except Exception as e:
 				print e
-				return
+		raise urllib2.HTTPError(filename,'500','timed out','',None)
 	def writefile(self,filename,sha1v):
 		file = self.getfile(filename)
 		path = self.dir+filename
@@ -104,12 +112,12 @@ class Updater(object):
 			print 'ReLoad	/autoupdate.ini				OK!'
 	def getnewsha1(self,path,oldsha1):
 		output = FileUtil.open(path,"wb")
-		output.write(self.netopen('/'+common.CONFIG_SHA1)) 
+		output.write(self.getfile('/'+common.CONFIG_SHA1)) 
 		output.close()
 		input = FileUtil.open(path,"r")
 		tmp2 = input.read()
 		input.close()
-		hash = self.netopen('/'+common.CONFIG_SIGN)
+		hash = self.getfile('/'+common.CONFIG_SIGN)
 		print 'Verifing Hash Table.....'
 		ok = verify(tmp2,hash)
 		if not ok:
@@ -126,7 +134,7 @@ class Updater(object):
 
 	def update(self):
 		print 'Checking for new update...'
-		versionfile = self.netopen('/'+common.CONFIG_VERSIONFILE)
+		versionfile = self.getfile('/'+common.CONFIG_VERSIONFILE)
 		print "Show Server Version Message:"
 		print versionfile
 		oldsha1 = self.old_file_sha1_ini
@@ -156,8 +164,24 @@ def main():
 	sys.stdout.write(proxyconfig.info())
 	thread.start_new_thread(server.serve_forever, tuple())
 	sha1 = makehash(dir)
-	updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
-	updater.update()
+	while 1:
+		try:
+			updater = Updater(common.AUTOUPDATE_SERVER[0],sha1,dir)
+			updater.update()
+			return
+		except urllib2.HTTPError:
+			print '------------------------------------------------------\n'
+			print 'Updata Server Error,Change another one\n'
+			print '------------------------------------------------------\n'
+			if len(common.AUTOUPDATE_SERVER) > 1:
+				common.AUTOUPDATE_SERVER.pop(0)
+				sys.stdout.write(common.info())
+			else :
+				print '------------------------------------------------------\n'
+				print 'All Updata Server Is Down,Please Contact Author\n'
+				print 'https://code.google.com/p/greatagent/issues/entry\n'
+				print '------------------------------------------------------\n'
+				return
 
 	#for path, sha1v in sha1.getsection('FILE_SHA1'):
 		#newpath = path.replace('$path$',dir)

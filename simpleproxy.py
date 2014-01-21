@@ -1280,7 +1280,6 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		except NetWorkIOError as e:
 			if e.args[0] in (errno.ECONNRESET, 10063, errno.ENAMETOOLONG):
 				logging.warn('http_util.request "%s %s" failed:%s, try addto `withgae`', self.command, self.path, e)
-				common.GOOGLE_WITHGAE = tuple(list(common.GOOGLE_WITHGAE)+[re.sub(r':\d+$', '', self.parsed_url.netloc)])
 			elif e.args[0] not in (errno.ECONNABORTED, errno.EPIPE):
 				raise
 		except Exception as e:
