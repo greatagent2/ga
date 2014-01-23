@@ -2416,7 +2416,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         logging.info('%s "PROCESS %s %s:%d HTTP/1.1" - -', self.address_string(), self.command, host, port)
         self.__realconnection = None
         self.wfile.write(b'HTTP/1.1 200 OK\r\n\r\n')
-        while 1:
+        for i in range(1, 3):
             try:
                 ssl_sock = ssl.wrap_socket(self.connection, keyfile=certfile, certfile=certfile, server_side=True)
                 break
