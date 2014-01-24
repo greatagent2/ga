@@ -1151,7 +1151,7 @@ class Common(object):
             if name != 'google_cn' and name.startswith('google_') and len(resolved_iplist) < 32:
                 logging.info('local need_resolve_hosts=%s is too short, try remote_resolve', need_resolve_hosts)
                 need_resolve_remote += [x for x in need_resolve_hosts if ':' not in x and not re.match(r'\d+\.\d+\.\d+\.\d+', x)]
-            dnsservers = ['114.114.114.114', '114.114.115.115','8.8.8.8','8.8.4.4']
+            dnsservers = ['114.114.114.114', '114.114.115.115','1.2.4.8','210.2.4.8']
             result_queue = Queue.Queue()
             for host in need_resolve_remote:
                 for dnsserver in dnsservers:
