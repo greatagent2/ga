@@ -1350,7 +1350,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 finally:
                     logging.info('%r matched local file %r, return', self.path, filename)
                     return
-            need_crlf = hostname.startswith('google_') or host.endswith(common.HTTP_CRLFSITES)
+            need_crlf = hostname.startswith('google_')
             hostname = hostname or host
             if hostname in common.IPLIST_MAP:
                 http_util.dns[host] = common.IPLIST_MAP[hostname]
@@ -1384,7 +1384,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         except Exception as e:
             host = self.headers.get('Host', '')
             logging.warn('GAEProxyHandler direct(%s) Error', host)
-            raise
+            print e
 
     def do_CONNECT(self):
         """handle CONNECT cmmand, socket forward or deploy a fake cert"""
