@@ -121,7 +121,7 @@ class Updater(object):
 		ok = verify(tmp2,hash)
 		if not ok:
 			print 'Verify Failed!'
-			sys.exit()
+			raise urllib2.HTTPError(filename,'500','Verify Failed!','',None)
 		print 'Verify Successful1!'
 		
 	def cleandir(self):
