@@ -77,6 +77,7 @@ import io
 import fnmatch
 import traceback
 import random
+import subprocess
 import base64
 import string
 import hashlib
@@ -1504,12 +1505,11 @@ class Common(object):
             try:
                 iplist = dns_remote_resolve(host, dnsservers, self.DNS_BLACKLIST, timeout=2)
                 iplist2 = DNSUtil.remote_resolve(dnsserver, host, self.DNS_BLACKLIST, timeout=2)
-                if iplist:
-                    queue.put((host, dnsservers, iplist))
-                if iplist2:
-                    queue.put((host, dnsservers, iplist2))
+                queue.put((host, dnsservers, iplist or []))
+                queue.put((host, dnsservers, iplist2 or []))
             except (socket.error, OSError) as e:
                 logging.error('resolve remote host=%r failed: %s', host, e)
+                queue.put((host, dnsservers, []))
         # https://support.google.com/websearch/answer/186669?hl=zh-Hans
         google_blacklist = ['216.239.32.20', '74.125.127.102', '74.125.155.102', '74.125.39.102', '74.125.39.113', '209.85.229.138']
         for name, need_resolve_hosts in list(self.IPLIST_MAP.items()):
@@ -1529,7 +1529,7 @@ class Common(object):
                     logging.debug('resolve remote host=%r from dnsservers=%s return iplist=%s', host, dnsservers, iplist)
                 except Queue.Empty:
                     logging.debug('resolve remote timeout, try resolve local')
-                    resolved_iplist += socket.gethostbyname_ex(host)[-1]
+                    resolved_iplist += sum([socket.gethostbyname_ex(x)[-1] for x in need_resolve_remote], [])
                     break
             if name.startswith('google_') and name not in ('google_cn', 'google_hk'):
                 iplist_prefix = re.split(r'[\.:]', resolved_iplist[0])[0]
@@ -2587,6 +2587,37 @@ class PHPProxyHandler(GAEProxyHandler):
                 raise
 
 
+def get_uptime():
+    if os.name == 'nt':
+        import ctypes
+        tick = ctypes.windll.kernel32.GetTickCount64()
+        return tick / 1000.0
+    elif os.path.isfile('/proc/uptime'):
+        with open('/proc/uptime', 'rb') as fp:
+            uptime = fp.readline().strip().split()[0].strip()
+            return float(uptime)
+    elif any(os.path.isfile(os.path.join(x, 'uptime')) for x in os.environ['PATH'].split(os.pathsep)):
+        # http://www.opensource.apple.com/source/lldb/lldb-69/test/pexpect-2.4/examples/uptime.py
+        pattern = r'up\s+(.*?),\s+([0-9]+) users?,\s+load averages?: ([0-9]+\.[0-9][0-9]),?\s+([0-9]+\.[0-9][0-9]),?\s+([0-9]+\.[0-9][0-9])'
+        output = os.popen('uptime').read()
+        duration, _, _, _, _ = re.search(pattern, output).groups()
+        days, hours, mins = 0, 0, 0
+        if 'day' in duration:
+            m = re.search(r'([0-9]+)\s+day', duration)
+            days = int(m.group(1))
+        if ':' in duration:
+            m = re.search(r'([0-9]+):([0-9]+)', duration)
+            hours = int(m.group(1))
+            mins = int(m.group(2))
+        if 'min' in duration:
+            m = re.search(r'([0-9]+)\s+min', duration)
+            mins = int(m.group(1))
+        return days * 86400 + hours * 3600 + mins * 60
+    else:
+        #TODO: support other platforms
+        return None
+
+
 class PACProxyHandler(GAEProxyHandler):
 
     localhosts = ('127.0.0.1', 'localhost')
@@ -2678,7 +2709,10 @@ class PACProxyHandler(GAEProxyHandler):
             if self.path.endswith('.pac?flush'):
                 thread.start_new_thread(PacUtil.update_pacfile, (self.pacfile,))
             elif time.time() - os.path.getmtime(self.pacfile) > common.PAC_EXPIRED:
-                thread.start_new_thread(lambda: os.utime(self.pacfile, (time.time(), time.time())) or PacUtil.update_pacfile(self.pacfile), tuple())
+                # check system uptime > 30 minutes
+                uptime = get_uptime()
+                if uptime and uptime > 1800:
+                    thread.start_new_thread(lambda: os.utime(self.pacfile, (time.time(), time.time())) or PacUtil.update_pacfile(self.pacfile), tuple())
             with open(filename, 'rb') as fp:
                 data = fp.read()
                 self.wfile.write(('HTTP/1.1 200\r\nContent-Type: %s\r\nContent-Length: %s\r\n\r\n' % (mimetype, len(data))).encode())
