@@ -621,7 +621,10 @@ class PacUtil(object):
                     jsLines.append(jsLine)
                 else:
                     jsLines.insert(0, jsLine)
-        function = 'function %s(url, host) {\r\n%s\r\n%sreturn "%s";\r\n}' % (func_name, '\n'.join(jsLines), ' '*indent, default)
+        if common.PAC_WHITELIST:
+            function = 'function %s(url, host) {\r\n%s\r\n%sreturn "%s";\r\n}' % (func_name, '\n'.join(jsLines), ' '*indent, 'PROXY %s' % proxy)
+        else:
+            function = 'function %s(url, host) {\r\n%s\r\n%sreturn "%s";\r\n}' % (func_name, '\n'.join(jsLines), ' '*indent, default)
         return function
 
     @staticmethod
@@ -1453,7 +1456,8 @@ class Common(object):
         self.PAC_IP = self.CONFIG.get('pac', 'ip')
         self.PAC_PORT = self.CONFIG.getint('pac', 'port')
         self.PAC_FILE = self.CONFIG.get('pac', 'file').lstrip('/')
-        self.PAC_GFWLIST = self.CONFIG.get('pac', 'gfwlist')
+        self.PAC_WHITELIST = self.CONFIG.has_option('pac', 'whitelist')
+        self.PAC_GFWLIST = self.CONFIG.get('pac', 'whitelist') if self.PAC_WHITELIST else self.CONFIG.get('pac', 'gfwlist')
         self.PAC_ADBLOCK = self.CONFIG.get('pac', 'adblock') if self.CONFIG.has_option('pac', 'adblock') else ''
         self.PAC_EXPIRED = self.CONFIG.getint('pac', 'expired')
 
