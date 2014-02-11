@@ -1430,6 +1430,18 @@ class Common(object):
         self.GAE_VALIDATE = self.CONFIG.getint('gae', 'validate')
         self.GAE_OBFUSCATE = self.CONFIG.getint('gae', 'obfuscate')
         self.GAE_OPTIONS = self.CONFIG.get('gae', 'options')
+        
+        if self.CONFIG.has_section('rangefetch'):
+            self.RANGEFETCH_APPIDS = re.findall(r'[\w\-\.]+', self.CONFIG.get('rangefetch', 'appid').replace('.appspot.com', '')) if self.CONFIG.has_option('rangefetch', 'appid') else self.GAE_APPIDS
+            if len(self.RANGEFETCH_APPIDS) > 50 : random.shuffle(self.RANGEFETCH_APPIDS)
+            self.RANGEFETCH_PASSWORD = self.CONFIG.get('rangefetch', 'password').strip() if self.CONFIG.has_option('rangefetch', 'password') else self.GAE_PASSWORD
+            self.RANGEFETCH_PATH = self.CONFIG.get('rangefetch', 'path') if self.CONFIG.has_option('rangefetch', 'path') else self.GAE_PATH
+            self.RANGEFETCH_OPTIONS = self.CONFIG.get('rangefetch', 'options') if self.CONFIG.has_option('rangefetch', 'options') else self.GAE_OPTIONS
+        else:
+            self.RANGEFETCH_APPIDS = self.GAE_APPIDS
+            self.RANGEFETCH_PASSWORD = self.GAE_PASSWORD
+            self.RANGEFETCH_PATH = self.GAE_PATH
+            self.RANGEFETCH_OPTIONS = self.GAE_OPTIONS
 
         hosts_section, http_section = '%s/hosts' % self.GAE_PROFILE, '%s/http' % self.GAE_PROFILE
         self.HOSTS_MAP = collections.OrderedDict((k, v or k) for k, v in self.CONFIG.items(hosts_section) if '\\' not in k and ':' not in k and not k.startswith('.'))
@@ -1700,7 +1712,7 @@ class XORCipher(object):
         return self.__key_xor(data)
 
 
-def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
+def gae_urlfetch(method, url, headers, payload, fetchserver,options, **kwargs):
     # deflate = lambda x:zlib.compress(x)[2:-4]
     rc4crypt = lambda s, k: RC4Cipher(k).encrypt(s) if k else s
     if payload:
@@ -1719,7 +1731,7 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
     # prepare GAE request
     request_method = 'POST'
     request_headers = {}
-    if 'rsa' in common.GAE_OPTIONS and __RSA_KEY__:
+    if 'rsa' in options and __RSA_KEY__:
         from Crypto.PublicKey import RSA
         from Crypto.Cipher import PKCS1_OAEP
         from Crypto.Random.random import StrongRandom
@@ -1737,7 +1749,7 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
         crypt_response_msg_key = kwargs.get('password')
         crypt_response_fp_key = kwargs.get('password')
     if common.GAE_OBFUSCATE:
-        if 'rc4' in common.GAE_OPTIONS:
+        if 'rc4' in options:
             request_headers['X-GOA-Options'] = 'rc4'
             cookie = base64.b64encode(rc4crypt(zlib.compress(metadata)[2:-4], crypt_cookie_key)).strip()
             payload = rc4crypt(payload, crypt_payload_key)
@@ -1751,7 +1763,7 @@ def gae_urlfetch(method, url, headers, payload, fetchserver, **kwargs):
     else:
         metadata = zlib.compress(metadata)[2:-4]
         payload = '%s%s%s' % (struct.pack('!h', len(metadata)), metadata, payload)
-        if 'rc4' in common.GAE_OPTIONS:
+        if 'rc4' in options:
             request_headers['X-GOA-Options'] = 'rc4'
             payload = rc4crypt(payload, crypt_payload_key)
         request_headers['Content-Length'] = str(len(payload))
@@ -1798,7 +1810,7 @@ class RangeFetch(object):
     waitsize = 1024*512
     expect_begin = 0
 
-    def __init__(self, urlfetch, wfile, response, method, url, headers, payload, fetchservers, password, maxsize=0, bufsize=0, waitsize=0, threads=0):
+    def __init__(self, urlfetch, wfile, response, method, url, headers, payload, fetchservers,options, password, maxsize=0, bufsize=0, waitsize=0, threads=0):
         self.urlfetch = urlfetch
         self.wfile = wfile
         self.response = response
@@ -1807,6 +1819,7 @@ class RangeFetch(object):
         self.headers = headers
         self.payload = payload
         self.fetchservers = fetchservers
+        self.options = options
         self.password = password
         self.maxsize = maxsize or self.__class__.maxsize
         self.bufsize = bufsize or self.__class__.bufsize
@@ -1897,7 +1910,7 @@ class RangeFetch(object):
                         fetchserver = random.choice(self.fetchservers)
                         if self._last_app_status.get(fetchserver, 200) >= 500:
                             time.sleep(5)
-                        response = self.urlfetch(self.command, self.url, headers, self.payload, fetchserver, password=self.password)
+                        response = self.urlfetch(self.command, self.url, headers, self.payload, fetchserver,options = self.options, password=self.password)
                 except Queue.Empty:
                     continue
                 except Exception as e:
@@ -2052,6 +2065,12 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if len(common.GAE_APPIDS) > 10:
             random.shuffle(common.GAE_APPIDS)
         for appid in common.GAE_APPIDS:
+            host = '%s.appspot.com' % appid
+            if host not in common.HOSTS_MAP:
+                common.HOSTS_MAP[host] = common.HOSTS_POSTFIX_MAP['.appspot.com']
+            if host not in http_util.dns:
+                http_util.dns[host] = common.IPLIST_MAP[common.HOSTS_MAP[host]]
+        for appid in common.RANGEFETCH_APPIDS:
             host = '%s.appspot.com' % appid
             if host not in common.HOSTS_MAP:
                 common.HOSTS_MAP[host] = common.HOSTS_POSTFIX_MAP['.appspot.com']
@@ -2220,6 +2239,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         errors = []
         headers_sent = False
         get_fetchserver = lambda i: '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.GAE_APPIDS[i] if i is not None else random.choice(common.GAE_APPIDS), common.GAE_PATH)
+        get_rangefetchserver = lambda i: '%s://%s.appspot.com%s?' % (common.GAE_MODE, common.RANGEFETCH_APPIDS[i] if i is not None else random.choice(common.RANGEFETCH_APPIDS), common.RANGEFETCH_PATH)
         for retry in range(common.FETCHMAX_LOCAL):
             fetchserver = get_fetchserver(0 if not need_autorange else None)
             try:
@@ -2229,7 +2249,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     kwargs['password'] = common.GAE_PASSWORD
                 if common.GAE_VALIDATE:
                     kwargs['validate'] = 1
-                response = self.urlfetch(self.command, self.path, request_headers, payload, fetchserver, **kwargs)
+                response = self.urlfetch(self.command, self.path, request_headers, payload, fetchserver,common.GAE_OPTIONS, **kwargs)
                 if not response and retry == common.FETCHMAX_LOCAL-1:
                     html = message_html('502 URLFetch failed', 'Local URLFetch %r failed' % self.path, str(errors))
                     self.wfile.write(b'HTTP/1.0 502\r\nContent-Type: text/html\r\n\r\n' + html.encode('utf-8'))
@@ -2273,8 +2293,8 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if not headers_sent:
                     logging.info('%s "GAE %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
                     if response.status == 206:
-                        fetchservers = [get_fetchserver(i) for i in xrange(len(common.GAE_APPIDS))]
-                        rangefetch = RangeFetch(gae_urlfetch, self.wfile, response, self.command, self.path, self.headers, payload, fetchservers, common.GAE_PASSWORD, maxsize=common.AUTORANGE_MAXSIZE, bufsize=common.AUTORANGE_BUFSIZE, waitsize=common.AUTORANGE_WAITSIZE, threads=common.AUTORANGE_THREADS)
+                        fetchservers = [get_rangefetchserver(i) for i in xrange(len(common.RANGEFETCH_APPIDS))]
+                        rangefetch = RangeFetch(gae_urlfetch, self.wfile, response, self.command, self.path, self.headers, payload, fetchservers,common.RANGEFETCH_OPTIONS, common.RANGEFETCH_PASSWORD, maxsize=common.AUTORANGE_MAXSIZE, bufsize=common.AUTORANGE_BUFSIZE, waitsize=common.AUTORANGE_WAITSIZE, threads=common.AUTORANGE_THREADS)
                         return rangefetch.fetch()
                     if response.getheader('Set-Cookie'):
                         response.msg['Set-Cookie'] = self.normcookie(response.getheader('Set-Cookie'))
