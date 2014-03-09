@@ -2244,12 +2244,22 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             fetchserver = get_fetchserver(0 if not need_autorange else None)
             try:
                 content_length = 0
+                rangefetchappid = 0
                 kwargs = {}
                 if common.GAE_PASSWORD:
                     kwargs['password'] = common.GAE_PASSWORD
                 if common.GAE_VALIDATE:
                     kwargs['validate'] = 1
-                response = self.urlfetch(self.command, self.path, request_headers, payload, fetchserver,common.GAE_OPTIONS, **kwargs)
+                if common.GAE_OPTIONS:
+                    options = common.GAE_OPTIONS
+                else:
+                    options = ''
+                if 'googlevideo.com' in self.path:
+                    rangefetchappid = 1
+                    fetchserver = get_rangefetchserver(0 if not need_autorange else None)
+                    kwargs['password'] = common.RANGEFETCH_PASSWORD
+                    options = common.RANGEFETCH_OPTIONS
+                response = self.urlfetch(self.command, self.path, request_headers, payload, fetchserver,options, **kwargs)
                 if not response and retry == common.FETCHMAX_LOCAL-1:
                     html = message_html('502 URLFetch failed', 'Local URLFetch %r failed' % self.path, str(errors))
                     self.wfile.write(b'HTTP/1.0 502\r\nContent-Type: text/html\r\n\r\n' + html.encode('utf-8'))
@@ -2272,13 +2282,23 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         return
                 # appid over qouta, switch to next appid
                 if response.app_status == 503:
-                    if len(common.GAE_APPIDS) > 1:
-                        common.GAE_APPIDS.pop(0)
-                        logging.info('Current APPID Over Quota,Auto Switch to [%s], Retrying…' % (common.GAE_APPIDS[0]))
-                        self.do_METHOD_PROCESS()
-                        return
-                    else:
-                        logging.error('All APPID Over Quota')
+                    if rangefetchappid :
+                        if len(common.RANGEFETCH_APPIDS) > 1:
+                            common.RANGEFETCH_APPIDS.pop(0)
+                            logging.info('Current APPID Over Quota,Auto Switch to [%s], Retrying…' % (common.RANGEFETCH_APPIDS[0]))
+                            self.do_METHOD_PROCESS()
+                            return
+                        else:
+                            logging.error('All APPID Over Quota')
+                    else :
+                        if len(common.GAE_APPIDS) > 1:
+                            common.GAE_APPIDS.pop(0)
+                            logging.info('Current APPID Over Quota,Auto Switch to [%s], Retrying…' % (common.GAE_APPIDS[0]))
+                            self.do_METHOD_PROCESS()
+                            return
+                        else:
+                            logging.error('All APPID Over Quota')
+
                 if response.app_status == 500 and need_autorange:
                     fetchserver = get_fetchserver(None)
                     logging.warning('500 with range in query, trying another fetchserver=%r', fetchserver)
