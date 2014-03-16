@@ -45,11 +45,15 @@ import glob
 sys.dont_write_bytecode = True
 sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
 
-sys.dont_write_bytecode = True
 try:
     from key_config import __RSA_KEY__
 except (ImportError, SystemError):
     __RSA_KEY__ = None
+try:
+    from key_config import __RANGEFETCH_RSA_KEY__
+except (ImportError, SystemError):
+    __RANGEFETCH_RSA_KEY__ = __RSA_KEY__
+
 
 try:
     import gevent
@@ -316,7 +320,7 @@ class CertUtil(object):
 
     @staticmethod
     def get_cert(commonname, sans=()):
-        if commonname.count('.') >= 2 and len(commonname.split('.')[-2]) > 4:
+        if commonname.count('.') >= 2 and [len(x) for x in reversed(commonname.split('.'))] > [2, 4]:
             commonname = '.'+commonname.partition('.')[-1]
         certfile = os.path.join(CertUtil.ca_certdir, commonname + '.crt')
         if os.path.exists(certfile):
@@ -681,12 +685,12 @@ class PacUtil(object):
                 if '/' not in line:
                     use_domain = True
                 else:
-                    if not line.startswith('http://'):
+                    if not line.startswith(('http://', 'https://')):
                         line = 'http://' + line
                     use_start = True
             elif '|' == line[0]:
                 line = line[1:]
-                if not line.startswith('http://'):
+                if not line.startswith(('http://', 'https://')):
                     line = 'http://' + line
                 use_start = True
             if line[-1] in ('^', '|'):
@@ -880,6 +884,26 @@ class DNSUtil(object):
         data = DNSUtil._remote_resolve(dnsserver, qname, timeout)
         iplist = DNSUtil._reply_to_iplist(data or b'')
         return iplist
+
+
+def get_dnsserver_list():
+    if os.name == 'nt':
+        import ctypes, ctypes.wintypes, struct, socket
+        DNS_CONFIG_DNS_SERVER_LIST = 6
+        buf = ctypes.create_string_buffer(2048)
+        ctypes.windll.dnsapi.DnsQueryConfig(DNS_CONFIG_DNS_SERVER_LIST, 0, None, None, ctypes.byref(buf), ctypes.byref(ctypes.wintypes.DWORD(len(buf))))
+        ips = struct.unpack('I', buf[0:4])[0]
+        out = []
+        for i in xrange(ips):
+            start = (i+1) * 4
+            out.append(socket.inet_ntoa(buf[start:start+4]))
+        return out
+    elif os.path.isfile('/etc/resolv.conf'):
+        with open('/etc/resolv.conf', 'rb') as fp:
+            return re.findall(r'(?m)^nameserver\s+(\S+)', fp.read())
+    else:
+        logging.warning("get_dnsserver_list failed: unsupport platform '%s-%s'", sys.platform, os.name)
+        return []
 
 
 def spawn_later(seconds, target, *args, **kwargs):
@@ -1712,7 +1736,7 @@ class XORCipher(object):
         return self.__key_xor(data)
 
 
-def gae_urlfetch(method, url, headers, payload, fetchserver,options, **kwargs):
+def gae_urlfetch(method, url, headers, payload, fetchserver,options,rsa_key = None, **kwargs):
     # deflate = lambda x:zlib.compress(x)[2:-4]
     rc4crypt = lambda s, k: RC4Cipher(k).encrypt(s) if k else s
     if payload:
@@ -1731,11 +1755,11 @@ def gae_urlfetch(method, url, headers, payload, fetchserver,options, **kwargs):
     # prepare GAE request
     request_method = 'POST'
     request_headers = {}
-    if 'rsa' in options and __RSA_KEY__:
+    if 'rsa' in options and rsa_key:
         from Crypto.PublicKey import RSA
         from Crypto.Cipher import PKCS1_OAEP
         from Crypto.Random.random import StrongRandom
-        rsakey = RSA.importKey(__RSA_KEY__.strip())
+        rsakey = RSA.importKey(rsa_key.strip())
         rsakey = PKCS1_OAEP.new(rsakey)
         crypt_cookie_key = base64.b64encode(read_random_bits(256))
         crypt_payload_key = base64.b64encode(read_random_bits(256))
@@ -1810,7 +1834,7 @@ class RangeFetch(object):
     waitsize = 1024*512
     expect_begin = 0
 
-    def __init__(self, urlfetch, wfile, response, method, url, headers, payload, fetchservers,options, password, maxsize=0, bufsize=0, waitsize=0, threads=0):
+    def __init__(self, urlfetch, wfile, response, method, url, headers, payload, fetchservers,options, password,rsa_key = None, maxsize=0, bufsize=0, waitsize=0, threads=0):
         self.urlfetch = urlfetch
         self.wfile = wfile
         self.response = response
@@ -1820,6 +1844,7 @@ class RangeFetch(object):
         self.payload = payload
         self.fetchservers = fetchservers
         self.options = options
+        self.rsa_key = rsa_key
         self.password = password
         self.maxsize = maxsize or self.__class__.maxsize
         self.bufsize = bufsize or self.__class__.bufsize
@@ -1910,7 +1935,7 @@ class RangeFetch(object):
                         fetchserver = random.choice(self.fetchservers)
                         if self._last_app_status.get(fetchserver, 200) >= 500:
                             time.sleep(5)
-                        response = self.urlfetch(self.command, self.url, headers, self.payload, fetchserver,options = self.options, password=self.password)
+                        response = self.urlfetch(self.command, self.url, headers, self.payload, fetchserver,options = self.options,rsa_key = self.rsa_key, password=self.password)
                 except Queue.Empty:
                     continue
                 except Exception as e:
@@ -1993,11 +2018,7 @@ class LocalProxyServer(SocketServer.ThreadingTCPServer):
         """make ThreadingTCPServer happy"""
         exc_info = sys.exc_info()
         error = exc_info and len(exc_info) and exc_info[1]
-        if len(error.args) > 1:
-            error_args = error.args[1]
-        else:
-            error_args = ''
-        if isinstance(error, NetWorkIOError) and 'bad write retry' in error_args:
+        if isinstance(error, NetWorkIOError) and len(error.args) > 1 and 'bad write retry' in error.args[1]:
             exc_info = error = None
         else:
             del exc_info, error
@@ -2252,14 +2273,17 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     kwargs['validate'] = 1
                 if common.GAE_OPTIONS:
                     options = common.GAE_OPTIONS
+                    rsa_key = __RSA_KEY__
                 else:
                     options = ''
+                    rsa_key = None
                 if 'googlevideo.com' in self.path:
                     rangefetchappid = 1
                     fetchserver = get_rangefetchserver(0 if not need_autorange else None)
                     kwargs['password'] = common.RANGEFETCH_PASSWORD
                     options = common.RANGEFETCH_OPTIONS
-                response = self.urlfetch(self.command, self.path, request_headers, payload, fetchserver,options, **kwargs)
+                    rsa_key = __RANGEFETCH_RSA_KEY__
+                response = self.urlfetch(self.command, self.path, request_headers, payload, fetchserver,options,rsa_key, **kwargs)
                 if not response and retry == common.FETCHMAX_LOCAL-1:
                     html = message_html('502 URLFetch failed', 'Local URLFetch %r failed' % self.path, str(errors))
                     self.wfile.write(b'HTTP/1.0 502\r\nContent-Type: text/html\r\n\r\n' + html.encode('utf-8'))
@@ -2314,7 +2338,7 @@ class GAEProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     logging.info('%s "GAE %s %s HTTP/1.1" %s %s', self.address_string(), self.command, self.path, response.status, response.getheader('Content-Length', '-'))
                     if response.status == 206:
                         fetchservers = [get_rangefetchserver(i) for i in xrange(len(common.RANGEFETCH_APPIDS))]
-                        rangefetch = RangeFetch(gae_urlfetch, self.wfile, response, self.command, self.path, self.headers, payload, fetchservers,common.RANGEFETCH_OPTIONS, common.RANGEFETCH_PASSWORD, maxsize=common.AUTORANGE_MAXSIZE, bufsize=common.AUTORANGE_BUFSIZE, waitsize=common.AUTORANGE_WAITSIZE, threads=common.AUTORANGE_THREADS)
+                        rangefetch = RangeFetch(gae_urlfetch, self.wfile, response, self.command, self.path, self.headers, payload, fetchservers,common.RANGEFETCH_OPTIONS, common.RANGEFETCH_PASSWORD,rsa_key = __RANGEFETCH_RSA_KEY__, maxsize=common.AUTORANGE_MAXSIZE, bufsize=common.AUTORANGE_BUFSIZE, waitsize=common.AUTORANGE_WAITSIZE, threads=common.AUTORANGE_THREADS)
                         return rangefetch.fetch()
                     if response.getheader('Set-Cookie'):
                         response.msg['Set-Cookie'] = self.normcookie(response.getheader('Set-Cookie'))
@@ -2887,6 +2911,8 @@ def pre_start():
     if not dnslib:
         logging.error('dnslib not found, please put dnslib-0.8.3.egg to %r!', os.path.dirname(os.path.abspath(__file__)))
         sys.exit(-1)
+    if os.name == 'nt' and not common.DNS_ENABLE:
+        any(common.DNS_SERVERS.insert(0, x) for x in [y for y in get_dnsserver_list() if y not in common.DNS_SERVERS])
     if not OpenSSL:
         logging.warning('python-openssl not found, please install it!')
     if 'uvent.loop' in sys.modules and isinstance(gevent.get_hub().loop, __import__('uvent').loop.UVLoop):
