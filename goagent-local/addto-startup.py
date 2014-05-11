@@ -22,7 +22,7 @@ def addto_startup_linux():
 [Desktop Entry]
 Type=Application
 Categories=Network;Proxy;
-Exec=/usr/bin/env python "%s/%s"
+Exec=/usr/bin/env python2 "%s/%s"
 Icon=%s/goagent-logo.png
 Hidden=false
 NoDisplay=false
@@ -48,7 +48,7 @@ def addto_startup_osx():
             GroupName = 'wheel',
             Label = 'org.goagent.macos',
             ProgramArguments = list([
-                '/usr/bin/python',
+                '/usr/bin/python2',
                 os.path.join(os.path.abspath(os.path.dirname(__file__)), 'proxy.py')
                 ]),
             RunAtLoad = True,
