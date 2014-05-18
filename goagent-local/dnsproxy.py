@@ -117,10 +117,10 @@ class ExpireCache(object):
             del v[key], ets[key]
 
 
-def dns_resolve_over_udp(qname, dnsservers, timeout, **kwargs):
+def dnslib_resolve_over_udp(qname, dnsservers, timeout, **kwargs):
     """
     http://gfwrev.blogspot.com/2009/11/gfwdns.html
-    http://zh.wikipedia.org/wiki/域名服务器缓存污染
+    http://zh.wikipedia.org/wiki/%E5%9F%9F%E5%90%8D%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%BC%93%E5%AD%98%E6%B1%A1%E6%9F%93
     http://support.microsoft.com/kb/241352
     """
     blacklist = kwargs.get('blacklist', ())
@@ -171,8 +171,8 @@ def dns_resolve_over_udp(qname, dnsservers, timeout, **kwargs):
             sock.close()
 
 
-def dns_resolve_over_tcp(qname, dnsservers, timeout, **kwargs):
-    """tcp query over tcp"""
+def dnslib_resolve_over_tcp(qname, dnsservers, timeout, **kwargs):
+    """dns query over tcp"""
     blacklist = kwargs.get('blacklist', ())
     def do_resolve(qname, dnsserver, timeout, queobj):
         query = dnslib.DNSRecord(q=dnslib.DNSQuestion(qname))
@@ -209,11 +209,14 @@ def dns_resolve_over_tcp(qname, dnsservers, timeout, **kwargs):
     for dnsserver in dnsservers:
         thread.start_new_thread(do_resolve, (qname, dnsserver, timeout, queobj))
     for i in range(len(dnsservers)):
-        result = queobj.get()
+        try:
+            result = queobj.get(timeout)
+        except Queue.Empty:
+            raise socket.gaierror(11004, 'getaddrinfo %r from %r failed' % (qname, dnsservers))
         if result and not isinstance(result, Exception):
             return result
         elif i == len(dnsservers) - 1:
-            logging.warning('dns_resolve_over_tcp %r with %s return %r', qname, dnsservers, result)
+            logging.warning('dnslib_resolve_over_tcp %r with %s return %r', qname, dnsservers, result)
     raise socket.gaierror(11004, 'getaddrinfo %r from %r failed' % (qname, dnsservers))
 
 
@@ -275,7 +278,7 @@ class DNSServer(gevent.server.DatagramServer):
         except KeyError:
             pass
         try:
-            dns_resolve = dns_resolve_over_tcp if qname.endswith(self.dns_tcpover) else dns_resolve_over_udp
+            dns_resolve = dnslib_resolve_over_tcp if qname.endswith(self.dns_tcpover) else dnslib_resolve_over_udp
             kwargs = {'blacklist': self.dns_blacklist, 'turstservers': self.dns_trust_servers}
             record = dns_resolve(qname, dnsservers, self.dns_timeout, **kwargs)
             ttl = max(x.ttl for x in record.rr) if record.rr else 600

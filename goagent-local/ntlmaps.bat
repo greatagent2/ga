@@ -2,9 +2,9 @@
 
 PARENT_PROXY = '10.64.1.63'
 PARENT_PROXY_PORT = '8080'
-USER = 'username_to_use'
+NT_DOMAIN = 'your_nt_domain'
+USER = 'your_nt_username'
 PASSWORD = 'your_nt_password'
-NT_DOMAIN = 'your_domain'
 
 
 conf = {'GENERAL': {'PARENT_PROXY': PARENT_PROXY,
@@ -21,7 +21,7 @@ conf = {'GENERAL': {'PARENT_PROXY': PARENT_PROXY,
         'NTLM_AUTH': {'USER': USER,
                       'PASSWORD': PASSWORD,
                       'NT_DOMAIN': NT_DOMAIN,
-                      'COMPLEX_PASSWORD_INPUT': '1',
+                      'COMPLEX_PASSWORD_INPUT': 0,
                       'LM_HASHED_PW': '',
                       'LM_PART': '1',
                       'NT_HASHED_PW': '',
@@ -42,10 +42,17 @@ import sys
 print 'NTLM authorization Proxy Server v%s' % conf['GENERAL']['VERSION']
 print 'Copyright (C) 2001-2009 by Dmitry Rozmanov, Darryl Dixon, and others.'
 
-if conf['NTLM_AUTH']['NTLM_TO_BASIC'] == '0' and conf['NTLM_AUTH']['USER'] == 'username_to_use':
+if conf['NTLM_AUTH']['NTLM_TO_BASIC'] == '0':
+    if conf['NTLM_AUTH']['NT_DOMAIN'] == 'your_nt_domain':
+        print "Use %r as DOMAIN" % os.environ['USERDOMAIN']
+        conf['NTLM_AUTH']['NT_DOMAIN'] = os.environ['USERDOMAIN']
+    if conf['NTLM_AUTH']['USER'] == 'your_nt_username':
+        print "Use %r as Username" % os.environ['USERNAME']
+        conf['NTLM_AUTH']['USER'] = os.environ['USERNAME']
+    if conf['NTLM_AUTH']['PASSWORD'] == 'your_nt_password':
+        conf['NTLM_AUTH']['PASSWORD'] = raw_input("Type your NT Password:").strip()
+        os.system('cls')
     print
-    print 'PLEASE SET username/password in %r' % __file__
-    sys.exit(-1)
 
 try:
     import gevent
