@@ -23,15 +23,14 @@ PACKAGE_DESC="goagent proxy server"
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:${PATH}
 
 start() {
-    echo "Starting ${PACKAGE_DESC}: "
-    nohup /usr/bin/env python2.7 proxy.py > /dev/null 2>&1 &
-    echo $! > ${PACKAGE_NAME}.pid
+    echo -n "Starting ${PACKAGE_DESC}: "
+    nohup /usr/bin/env python2.7 proxy.py 2>&1 | /usr/bin/logger -t ${PACKAGE_NAME} &
     echo "${PACKAGE_NAME}."
 }
 
 stop() {
-    echo "Stopping ${PACKAGE_DESC}: "
-    kill -9 `cat ${PACKAGE_NAME}.pid` || true
+    echo -n "Stopping ${PACKAGE_DESC}: "
+    kill -9 `ps aux | grep 'python2.7 proxy.py' | grep -v grep | awk '{print $2}'` || true
     echo "${PACKAGE_NAME}."
 }
 

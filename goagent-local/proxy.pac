@@ -4,8 +4,10 @@ function FindProxyForURL(url, host) {
     var blackhole = 'PROXY 127.0.0.1:8086';
     var defaultproxy = 'DIRECT';
     if (isPlainHostName(host) ||
-        shExpMatch(host, 'localhost.*') ||
-        host.indexOf('127.') == 0) {
+        host.indexOf('127.') == 0 ||
+        host.indexOf('192.168.') == 0 ||
+        host.indexOf('10.') == 0 ||
+        shExpMatch(host, 'localhost.*')) {
         return 'DIRECT';
     } else if (FindProxyForURLByAdblock(url, host) != defaultproxy ||
                host == 'p.tanx.com' ||
