@@ -558,11 +558,8 @@ def dnslib_resolve_over_udp(query, dnsservers, timeout, **kwargs):
     """
     if not isinstance(query, (basestring, dnslib.DNSRecord)):
         raise TypeError('query argument requires string/DNSRecord')
-    if isinstance(query, basestring):
-        query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query))
     blacklist = kwargs.get('blacklist', ())
     turstservers = kwargs.get('turstservers', ())
-    query_data = query.pack()
     dns_v4_servers = [x for x in dnsservers if ':' not in x]
     dns_v6_servers = [x for x in dnsservers if ':' in x]
     sock_v4 = sock_v6 = None
@@ -578,13 +575,20 @@ def dnslib_resolve_over_udp(query, dnsservers, timeout, **kwargs):
         for _ in xrange(4):
             try:
                 for dnsserver in dns_v4_servers:
+                    if isinstance(query, basestring):
+                        query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query))
+                    query_data = query.pack()
                     sock_v4.sendto(query_data, parse_hostport(dnsserver, 53))
                 for dnsserver in dns_v6_servers:
+                    if isinstance(query, basestring):
+                        query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query, qtype=dnslib.QTYPE.AAAA))
+                    query_data = query.pack()
                     sock_v6.sendto(query_data, parse_hostport(dnsserver, 53))
                 while time.time() < timeout_at:
                     ins, _, _ = select.select(socks, [], [], 0.1)
                     for sock in ins:
-                        reply_data, (reply_server, _) = sock.recvfrom(512)
+                        reply_data, reply_address = sock.recvfrom(512)
+                        reply_server = reply_address[0]
                         record = dnslib.DNSRecord.parse(reply_data)
                         iplist = [str(x.rdata) for x in record.rr if x.rtype in (1, 28, 255)]
                         if any(x in blacklist for x in iplist):
@@ -699,10 +703,11 @@ def dnslib_resolve_over_tcp(query, dnsservers, timeout, **kwargs):
     """dns query over tcp"""
     if not isinstance(query, (basestring, dnslib.DNSRecord)):
         raise TypeError('query argument requires string/DNSRecord')
-    if isinstance(query, basestring):
-        query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query))
     blacklist = kwargs.get('blacklist', ())
     def do_resolve(query, dnsserver, timeout, queobj):
+        if isinstance(query, basestring):
+            qtype = dnslib.QTYPE.AAAA if ':' in dnsserver else dnslib.QTYPE.A
+            query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query, qtype=qtype))
         query_data = query.pack()
         sock_family = socket.AF_INET6 if ':' in dnsserver else socket.AF_INET
         sock = socket.socket(sock_family)
@@ -857,6 +862,7 @@ class URLFetch(object):
         skip_headers = self.skip_headers
         metadata += ''.join('%s:%s\n' % (k.title(), v) for k, v in headers.items() if k not in skip_headers)
         # prepare GAE request
+        request_fetchserver = self.fetchserver
         request_method = 'POST'
         request_headers = {}
         if 'rsa' in options and rsa_key:
@@ -877,17 +883,23 @@ class URLFetch(object):
             crypt_response_msg_key = kwargs.get('password')
             crypt_response_fp_key = kwargs.get('password')
         if common.GAE_OBFUSCATE:
-            if 'rc4' in options:
-                request_headers['X-GOA-Options'] = 'rc4'
-                cookie = base64.b64encode(rc4crypt(zlib.compress(metadata)[2:-4], crypt_cookie_key)).strip()
-                body = rc4crypt(body, crypt_payload_key)
-            else:
-                cookie = base64.b64encode(zlib.compress(metadata)[2:-4]).strip()
-            request_headers['Cookie'] = cookie
-            if body:
-                request_headers['Content-Length'] = str(len(body))
-            else:
-                request_method = 'GET'
+            # if 'rc4' in options:
+                # request_headers['X-GOA-Options'] = 'rc4'
+                # cookie = base64.b64encode(rc4crypt(zlib.compress(metadata)[2:-4], crypt_cookie_key)).strip()
+                # body = rc4crypt(body, crypt_payload_key)
+            # else:
+                # cookie = base64.b64encode(zlib.compress(metadata)[2:-4]).strip()
+            # request_headers['Cookie'] = cookie
+            # if body:
+                # request_headers['Content-Length'] = str(len(body))
+            # else:
+                # request_method = 'GET'
+            request_method = 'GET'
+            query_string = base64.b64encode(zlib.compress(metadata + '\n\n' + (body or ''))[2:-4]).strip()
+            request_fetchserver += '?' + query_string
+            if common.GAE_PAGESPEED:
+                request_fetchserver = re.sub(r'^(\w+://)', r'\g<1>1-ps.googleusercontent.com/h/', request_fetchserver)
+
         else:
             metadata = zlib.compress(metadata)[2:-4]
             body = '%s%s%s' % (struct.pack('!h', len(metadata)), metadata, body)
@@ -899,7 +911,7 @@ class URLFetch(object):
         need_crlf = 0 if common.GAE_MODE == 'https' else 1
         need_validate = common.GAE_VALIDATE
         cache_key = '%s:%d' % (common.HOST_POSTFIX_MAP['.appspot.com'], 443 if common.GAE_MODE == 'https' else 80)
-        response = self.create_http_request(request_method, self.fetchserver, request_headers, body, timeout, crlf=need_crlf, validate=need_validate, cache_key=cache_key)
+        response = self.create_http_request(request_method, request_fetchserver, request_headers, body, timeout, crlf=need_crlf, validate=need_validate, cache_key=cache_key)
         response.app_status = response.status
         response.app_options = response.getheader('X-GOA-Options', '')
         if response.status != 200:
@@ -1594,6 +1606,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
     tcp_connection_cache = collections.defaultdict(Queue.PriorityQueue)
     ssl_connection_time = collections.defaultdict(float)
     ssl_connection_cache = collections.defaultdict(Queue.PriorityQueue)
+    ssl_connection_bad_ipaddrs = {}
     ssl_connection_keepalive = False
     max_window = 4
     openssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
@@ -1749,6 +1762,8 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 ssl_sock.ssl_time = connected_time - start_time
                 # sometimes, we want to use raw tcp socket directly(select/epoll), so setattr it to ssl socket.
                 ssl_sock.sock = sock
+                # remove from bad ipaddrs dict
+                self.ssl_connection_bad_ipaddrs.pop(ipaddr, None)
                 # verify SSL certificate.
                 if validate and hostname.endswith('.appspot.com'):
                     cert = ssl_sock.getpeercert()
@@ -1764,6 +1779,9 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 queobj.put(e)
                 # reset a large and random timeout to the ipaddr
                 self.ssl_connection_time[ipaddr] = self.connect_timeout + random.random()
+                # record as bad ip
+                if ipaddr not in self.ssl_connection_bad_ipaddrs:
+                    self.ssl_connection_bad_ipaddrs[ipaddr] = time.time()
                 # close ssl socket
                 if ssl_sock:
                     ssl_sock.close()
@@ -1788,7 +1806,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 server_hostname = b'mail.google.com' if hostname.endswith('.appspot.com') else None
                 ssl_sock = SSLConnection(self.openssl_context, sock)
                 ssl_sock.set_connect_state()
-                if server_hostname:
+                if server_hostname and hasattr(ssl_sock, 'set_tlsext_host_name'):
                     ssl_sock.set_tlsext_host_name(server_hostname)
                 # start connection time record
                 start_time = time.time()
@@ -1804,6 +1822,8 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 self.ssl_connection_time[ipaddr] = ssl_sock.ssl_time = handshaked_time - start_time
                 # sometimes, we want to use raw tcp socket directly(select/epoll), so setattr it to ssl socket.
                 ssl_sock.sock = sock
+                # remove from bad ipaddrs dict
+                self.ssl_connection_bad_ipaddrs.pop(ipaddr, None)
                 # verify SSL certificate.
                 if validate and hostname.endswith('.appspot.com'):
                     cert = ssl_sock.get_peer_certificate()
@@ -1817,6 +1837,9 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 queobj.put(e)
                 # reset a large and random timeout to the ipaddr
                 self.ssl_connection_time[ipaddr] = self.connect_timeout + random.random()
+                # record as bad ip
+                if ipaddr not in self.ssl_connection_bad_ipaddrs:
+                    self.ssl_connection_bad_ipaddrs[ipaddr] = time.time()
                 # close ssl socket
                 if ssl_sock:
                     ssl_sock.close()
@@ -1850,10 +1873,19 @@ class AdvancedProxyHandler(SimpleProxyHandler):
             pass
         addresses = [(x, port) for x in self.gethostbyname2(hostname)]
         sock = None
-        for _ in range(kwargs.get('max_retry', 10)):
+        for i in range(kwargs.get('max_retry', 10)):
             window = min((self.max_window+1)//2, len(addresses))
-            addresses.sort(key=self.ssl_connection_time.__getitem__)
-            addrs = addresses[:window] + random.sample(addresses, window)
+            if i == 0:
+                addresses.sort(key=self.ssl_connection_time.__getitem__)
+                addrs = addresses[:window] + random.sample(addresses, window)
+            else:
+                bad_ipaddrs = sorted(set(addresses) & set(self.ssl_connection_bad_ipaddrs), key=self.ssl_connection_bad_ipaddrs.get)
+                unkown_ipaddrs = list(set(addresses) - set(self.ssl_connection_bad_ipaddrs))
+                random.shuffle(unkown_ipaddrs)
+                logging.info("bad_ipaddrs length=%d, unkown_ipaddrs length=%d", len(bad_ipaddrs), len(unkown_ipaddrs))
+                addrs = bad_ipaddrs[:window] + unkown_ipaddrs[:window]
+                if len(addrs) < self.max_window:
+                    addrs += random.sample(addresses, self.max_window - len(addrs))
             queobj = gevent.queue.Queue() if gevent else Queue.Queue()
             for addr in addrs:
                 thread.start_new_thread(create_connection_withopenssl, (addr, timeout, queobj))
@@ -2014,6 +2046,7 @@ class Common(object):
         self.GAE_OPTIONS = self.CONFIG.get('gae', 'options')
         self.GAE_REGIONS = set(x.upper() for x in self.CONFIG.get('gae', 'regions').split('|') if x.strip())
         self.GAE_SSLVERSION = self.CONFIG.get('gae', 'sslversion')
+        self.GAE_PAGESPEED = self.CONFIG.getint('gae', 'pagespeed') if self.CONFIG.has_option('gae', 'pagespeed') else 0
 
         if self.CONFIG.has_section('rangefetch'):
             self.RANGEFETCH_APPIDS = re.findall(r'[\w\-\.]+', self.CONFIG.get('rangefetch', 'appid').replace('.appspot.com', '')) if self.CONFIG.has_option('rangefetch', 'appid') else self.GAE_APPIDS
@@ -2052,9 +2085,10 @@ class Common(object):
 
         self.HTTP_WITHGAE = tuple(x for x in self.CONFIG.get(http_section, 'withgae').split('|') if x)
         self.HTTP_CRLFSITES = tuple(self.CONFIG.get(http_section, 'crlfsites').split('|'))
-        self.HTTP_FORCEHTTPS = tuple(self.CONFIG.get(http_section, 'forcehttps').split('|'))
-        self.HTTP_FAKEHTTPS = tuple(x for x in self.CONFIG.get(http_section, 'fakehttps').split('|') if x)
-        self.HTTP_NOFAKEHTTPS = tuple(x for x in (self.CONFIG.get(http_section, 'nofakehttps').split('|') if self.CONFIG.has_option(http_section, 'nofakehttps') else '' )if x)
+        self.HTTP_FORCEHTTPS = tuple(self.CONFIG.get(http_section, 'forcehttps').split('|')) if self.CONFIG.get(http_section, 'forcehttps').strip() else tuple()
+        self.HTTP_NOFORCEHTTPS = tuple(self.CONFIG.get(http_section, 'noforcehttps').split('|')) if self.CONFIG.get(http_section, 'noforcehttps').strip() else set()
+        self.HTTP_FAKEHTTPS = tuple(self.CONFIG.get(http_section, 'fakehttps').split('|')) if self.CONFIG.get(http_section, 'fakehttps').strip() else tuple()
+        self.HTTP_NOFAKEHTTPS = tuple(self.CONFIG.get(http_section, 'nofakehttps').split('|')) if self.CONFIG.get(http_section, 'nofakehttps').strip() else set()
         self.HTTP_DNS = self.CONFIG.get(http_section, 'dns').split('|') if self.CONFIG.has_option(http_section, 'dns') else []
 
         self.IPLIST_MAP = collections.OrderedDict((k, v.split('|')) for k, v in self.CONFIG.items('iplist'))
@@ -2103,7 +2137,7 @@ class Common(object):
         self.DNS_LISTEN = self.CONFIG.get('dns', 'listen')
         self.DNS_SERVERS = self.HTTP_DNS or self.CONFIG.get('dns', 'servers').split('|')
         self.DNS_BLACKLIST = set(self.CONFIG.get('dns', 'blacklist').split('|'))
-        self.DNS_TCPOVER = tuple(self.CONFIG.get('dns', 'tcpover').split('|'))
+        self.DNS_TCPOVER = tuple(self.CONFIG.get('dns', 'tcpover').split('|')) if self.CONFIG.get('dns', 'tcpover').strip() else tuple()
 
         self.USERAGENT_ENABLE = self.CONFIG.getint('useragent', 'enable')
         self.USERAGENT_STRING = self.CONFIG.get('useragent', 'string')
@@ -2114,13 +2148,9 @@ class Common(object):
     def resolve_iplist(self):
         def do_resolve(host, dnsservers, queue):
             iplist = []
-            for dnslib_resolve in (dnslib_resolve_over_udp, dnslib_resolve_over_tcp):
+            for dnslib_resolve in (dnslib_resolve_over_tcp,):
                 try:
-                    if "<local>" in dnsservers:
-                        iplist += socket.gethostbyname_ex(host)[-1]
-                    else:
-                        iplist += dnslib_record2iplist(dnslib_resolve_over_udp(host, dnsservers, timeout=2, blacklist=self.DNS_BLACKLIST))
-                        iplist += DNSUtil.remote_resolve(dnsserver, host, self.DNS_BLACKLIST, timeout=2)
+                    iplist += dnslib_record2iplist(dnslib_resolve_over_udp(host, dnsservers, timeout=4, blacklist=self.DNS_BLACKLIST))
                 except (socket.error, OSError) as e:
                     logging.debug('%r remote host=%r failed: %s', dnslib_resolve, host, e)
             queue.put((host, dnsservers, iplist))
@@ -2136,8 +2166,7 @@ class Common(object):
                 for dnsserver in self.DNS_SERVERS:
                     logging.debug('resolve remote host=%r from dnsserver=%r', host, dnsserver)
                     thread.start_new_thread(do_resolve, (host, [dnsserver], result_queue))
-                    thread.start_new_thread(do_resolve, (host, ["<local>"], result_queue))
-            for _ in xrange(len(self.DNS_SERVERS) * len(need_resolve_remote) * 2):
+            for _ in xrange(len(self.DNS_SERVERS) * len(need_resolve_remote)):
                 try:
                     host, dnsservers, iplist = result_queue.get(timeout=5)
                     resolved_iplist += iplist or []
@@ -2347,16 +2376,17 @@ class UserAgentFilter(BaseProxyHandlerFilter):
 class ForceHttpsFilter(BaseProxyHandlerFilter):
     """force https filter"""
     def filter(self, handler):
-        if handler.command != 'CONNECT' and (handler.host in common.HTTP_FORCEHTTPS or handler.host.endswith(common.HTTP_FORCEHTTPS)) and not handler.headers.get('Referer', '').startswith('https://') and not handler.path.startswith('https://'):
-            logging.debug('ForceHttpsFilter metched %r %r', handler.path, handler.headers)
-            headers = {'Location': handler.path.replace('http://', 'https://', 1), 'Connection': 'close'}
-            return [handler.MOCK, 301, headers, '']
+        if handler.command != 'CONNECT' and handler.host.endswith(common.HTTP_FORCEHTTPS) and not handler.host.endswith(common.HTTP_FORCEHTTPS):
+            if not handler.headers.get('Referer', '').startswith('https://') and not handler.path.startswith('https://'):
+                logging.debug('ForceHttpsFilter metched %r %r', handler.path, handler.headers)
+                headers = {'Location': handler.path.replace('http://', 'https://', 1), 'Connection': 'close'}
+                return [handler.MOCK, 301, headers, '']
 
 
 class FakeHttpsFilter(BaseProxyHandlerFilter):
     """fake https filter"""
     def filter(self, handler):
-        if handler.command == 'CONNECT' and (handler.host in common.HTTP_FAKEHTTPS or handler.host.endswith(common.HTTP_FAKEHTTPS)) and not handler.host.endswith(common.HTTP_NOFAKEHTTPS):
+        if handler.command == 'CONNECT' and handler.host.endswith(common.HTTP_FAKEHTTPS) and  not handler.host.endswith(common.HTTP_NOFAKEHTTPS):
             logging.debug('FakeHttpsFilter metched %r %r', handler.path, handler.headers)
             return [handler.STRIP, True, None]
 
@@ -2545,6 +2575,13 @@ class GAEProxyHandler(AdvancedProxyHandler):
                 common.HOST_MAP[host] = common.HOST_POSTFIX_MAP['.appspot.com']
             if host not in self.dns_cache:
                 self.dns_cache[host] = common.IPLIST_MAP[common.HOST_MAP[host]]
+        if common.GAE_PAGESPEED:
+            for i in xrange(1, 10):
+                host = '%d-ps.googleusercontent.com' % i
+                if host not in common.HOST_MAP:
+                    common.HOST_MAP[host] = common.HOST_POSTFIX_MAP['.googleusercontent.com']
+                if host not in self.dns_cache:
+                    self.dns_cache[host] = common.IPLIST_MAP[common.HOST_MAP[host]]
 
     def RANGEFETCH(self, response, fetchservers, **kwargs):
         kwargs['password'] = common.RANGEFETCH_PASSWORD
