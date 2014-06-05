@@ -228,8 +228,7 @@ class CertUtil(object):
 
     @staticmethod
     def _get_cert(commonname, sans=()):
-        with open(CertUtil.ca_keyfile, 'rb') as fp:
-            content = """
+        content = """
 -----BEGIN CERTIFICATE-----
 MIIDUjCCAjoCAQAwDQYJKoZIhvcNAQEFBQAwbzEVMBMGA1UECxMMR29BZ2VudCBS
 b290MRAwDgYDVQQKEwdHb0FnZW50MRMwEQYDVQQDEwpHb0FnZW50IENBMREwDwYD
@@ -279,8 +278,8 @@ kdAjav8WV1n6IbkJC2L743Ozjb63z5w6p5O7OtTyYUWbLt1hvNkHlkNP8AjRQP8E
 -----END RSA PRIVATE KEY-----
 
 """
-            key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, content)
-            ca = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, content)
+        key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, content)
+        ca = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, content)
 
         pkey = OpenSSL.crypto.PKey()
         pkey.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
@@ -1081,7 +1080,7 @@ class SimpleProxyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 data = response.read(bufsize)
                 if data:
                     self.wfile.write(data)
-                    print 'read'
+                    #print 'read'
                 if not data:
                     self.handle_urlfetch_response_close(fetchserver, response)
                     response.close()
@@ -1760,7 +1759,7 @@ class GAEFetchFilter(BaseProxyHandlerFilter):
     """force https filter"""
     def filter(self, handler):
         """https://developers.google.com/appengine/docs/python/urlfetch/"""
-        return [handler.URLFETCH, fetchservers, common.FETCHMAX_LOCAL, kwargs]
+        return [handler.URLFETCH, '', common.FETCHMAX_LOCAL, {}]
 
 
 class GAEProxyHandler(AdvancedProxyHandler):
