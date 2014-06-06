@@ -609,96 +609,6 @@ def dnslib_resolve_over_udp(query, dnsservers, timeout, **kwargs):
         for sock in socks:
             sock.close()
 
-class DNSUtil(object):
-    """
-    http://gfwrev.blogspot.com/2009/11/gfwdns.html
-    http://zh.wikipedia.org/wiki/域名服务器缓存污染
-    http://support.microsoft.com/kb/241352
-    """
-    cndnsserver = ['114.114.114.114','114.114.115.115','114.114.114.119','114.114.115.119','114.114.114.110','114.114.115.110','1.2.4.8','210.2.4.8']
-    max_retry = 3
-    max_wait = 3
-
-    @staticmethod
-    def _reply_to_iplist(data):
-        assert isinstance(data, bytes)
-        if bytes is str:
-            iplist = ['.'.join(str(ord(x)) for x in s) for s in re.findall('\xc0.\x00\x01\x00\x01.{6}(.{4})', data) if all(ord(x) <= 255 for x in s)]
-        else:
-            iplist = ['.'.join(str(x) for x in s) for s in re.findall(b'\xc0.\x00\x01\x00\x01.{6}(.{4})', data) if all(x <= 255 for x in s)]
-        return iplist
-
-    @staticmethod
-    def is_bad_reply(data):
-        assert isinstance(data, bytes)
-        if bytes is str:
-            iplist = ['.'.join(str(ord(x)) for x in s) for s in re.findall(b'\xc0.\x00\x01\x00\x01.{6}(.{4})', data)+re.findall(b'\x00\x01\x00\x01.{6}(.{4})', data) if all(ord(x) <= 255 for x in s)]
-        else:
-            iplist = ['.'.join(str(x) for x in s) for s in re.findall(b'\xc0.\x00\x01\x00\x01.{6}(.{4})', data)+re.findall(b'\x00\x01\x00\x01.{6}(.{4})', data) if all(x <= 255 for x in s)]
-        return any(x in DNSUtil.blacklist for x in iplist)
-
-    @staticmethod
-    def _remote_resolve(dnsserver, qname, timeout=None):
-        if isinstance(dnsserver, tuple):
-            dnsserver, port = dnsserver
-        else:
-            port = 53
-        for i in range(DNSUtil.max_retry):
-            data = os.urandom(2)
-            data += b'\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00'
-            data += ''.join(chr(len(x))+x for x in qname.split('.')).encode()
-            data += b'\x00\x00\x01\x00\x01'
-            address_family = socket.AF_INET6 if ':' in dnsserver else socket.AF_INET
-            sock = None
-            try:
-                if i < DNSUtil.max_retry-1 and dnsserver in DNSUtil.cndnsserver:
-                    # UDP mode query
-                    sock = socket.socket(family=address_family, type=socket.SOCK_DGRAM)
-                    sock.settimeout(timeout)
-                    sock.sendto(data, (dnsserver, port))
-                    for i in range(DNSUtil.max_wait):
-                        data = sock.recv(512)
-                        if data and not DNSUtil.is_bad_reply(data):
-                            return data[2:]
-                        else:
-                            if qname.endswith('.google.com'):
-                                logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return poisoned udp data=%r', qname, dnsserver, data)
-                elif dnsserver not in DNSUtil.cndnsserver:
-                    # TCP mode query
-                    sock = socket.socket(family=address_family, type=socket.SOCK_STREAM)
-                    sock.settimeout(timeout)
-                    sock.connect((dnsserver, port))
-                    data = struct.pack('>h', len(data)) + data
-                    sock.send(data)
-                    rfile = sock.makefile('rb', 512)
-                    data = rfile.read(2)
-                    if not data:
-                        logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp header data=%r', qname, dnsserver, data)
-                        continue
-                    data = rfile.read(struct.unpack('>h', data)[0])
-                    if data and not DNSUtil.is_bad_reply(data):
-                        return data[2:]
-                    else:
-                        logging.warning('DNSUtil._remote_resolve(dnsserver=%r, %r) return bad tcp data=%r', qname, dnsserver, data)
-                else:
-                    break
-            except (socket.error, ssl.SSLError, OSError) as e:
-                if e.args[0] in (errno.ETIMEDOUT, 'timed out'):
-                    continue
-            except Exception as e:
-                raise
-            finally:
-                if sock:
-                    sock.close()
-
-    @staticmethod
-    def remote_resolve(dnsserver, qname, blacklist, timeout=None):
-        DNSUtil.blacklist = blacklist
-        data = DNSUtil._remote_resolve(dnsserver, qname, timeout)
-        iplist = DNSUtil._reply_to_iplist(data or b'')
-        return iplist
-
-
 def dnslib_resolve_over_tcp(query, dnsservers, timeout, **kwargs):
     """dns query over tcp"""
     if not isinstance(query, (basestring, dnslib.DNSRecord)):
@@ -1606,7 +1516,9 @@ class AdvancedProxyHandler(SimpleProxyHandler):
     tcp_connection_cache = collections.defaultdict(Queue.PriorityQueue)
     ssl_connection_time = collections.defaultdict(float)
     ssl_connection_cache = collections.defaultdict(Queue.PriorityQueue)
+    ssl_connection_good_ipaddrs = {}
     ssl_connection_bad_ipaddrs = {}
+    ssl_connection_unknown_ipaddrs = {}
     ssl_connection_keepalive = False
     max_window = 4
     openssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
@@ -1764,6 +1676,9 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 ssl_sock.sock = sock
                 # remove from bad ipaddrs dict
                 self.ssl_connection_bad_ipaddrs.pop(ipaddr, None)
+                # add to good ipaddrs dict
+                if ipaddr not in self.ssl_connection_good_ipaddrs:
+                    self.ssl_connection_good_ipaddrs[ipaddr] = handshaked_time
                 # verify SSL certificate.
                 if validate and hostname.endswith('.appspot.com'):
                     cert = ssl_sock.getpeercert()
@@ -1779,9 +1694,11 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 queobj.put(e)
                 # reset a large and random timeout to the ipaddr
                 self.ssl_connection_time[ipaddr] = self.connect_timeout + random.random()
-                # record as bad ip
+                # add to bad ipaddrs dict
                 if ipaddr not in self.ssl_connection_bad_ipaddrs:
                     self.ssl_connection_bad_ipaddrs[ipaddr] = time.time()
+                # remove from good ipaddrs dict
+                self.ssl_connection_good_ipaddrs.pop(ipaddr, None)
                 # close ssl socket
                 if ssl_sock:
                     ssl_sock.close()
@@ -1824,6 +1741,9 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 ssl_sock.sock = sock
                 # remove from bad ipaddrs dict
                 self.ssl_connection_bad_ipaddrs.pop(ipaddr, None)
+                # add to good ipaddrs dict
+                if ipaddr not in self.ssl_connection_good_ipaddrs:
+                    self.ssl_connection_good_ipaddrs[ipaddr] = handshaked_time
                 # verify SSL certificate.
                 if validate and hostname.endswith('.appspot.com'):
                     cert = ssl_sock.get_peer_certificate()
@@ -1837,9 +1757,11 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 queobj.put(e)
                 # reset a large and random timeout to the ipaddr
                 self.ssl_connection_time[ipaddr] = self.connect_timeout + random.random()
-                # record as bad ip
+                # add to bad ipaddrs dict
                 if ipaddr not in self.ssl_connection_bad_ipaddrs:
                     self.ssl_connection_bad_ipaddrs[ipaddr] = time.time()
+                # remove from good ipaddrs dict
+                self.ssl_connection_good_ipaddrs.pop(ipaddr, None)
                 # close ssl socket
                 if ssl_sock:
                     ssl_sock.close()
@@ -1862,6 +1784,17 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                         cache_queue.put((time.time(), sock))
                     else:
                         sock.close()
+        def reorg_ipaddrs():
+            current_time = time.time()
+            for ipaddr, ctime in self.ssl_connection_good_ipaddrs.items():
+                if current_time - ctime > 5 * 60:
+                    self.ssl_connection_good_ipaddrs.pop(ipaddr, None)
+                    self.ssl_connection_unknown_ipaddrs[ipaddr] = ctime
+            for ipaddr, ctime in self.ssl_connection_bad_ipaddrs.items():
+                if current_time - ctime > 5 * 60:
+                    self.ssl_connection_bad_ipaddrs.pop(ipaddr, None)
+                    self.ssl_connection_unknown_ipaddrs[ipaddr] = ctime
+            logging.info("good_ipaddrs=%d, bad_ipaddrs=%d, unkown_ipaddrs=%d", len(self.ssl_connection_good_ipaddrs), len(self.ssl_connection_bad_ipaddrs), len(self.ssl_connection_unknown_ipaddrs))
         try:
             while cache_key:
                 ctime, sock = self.ssl_connection_cache[cache_key].get_nowait()
@@ -1874,18 +1807,18 @@ class AdvancedProxyHandler(SimpleProxyHandler):
         addresses = [(x, port) for x in self.gethostbyname2(hostname)]
         sock = None
         for i in range(kwargs.get('max_retry', 10)):
-            window = min((self.max_window+1)//2, len(addresses))
-            if i == 0:
-                addresses.sort(key=self.ssl_connection_time.__getitem__)
-                addrs = addresses[:window] + random.sample(addresses, window)
-            else:
-                bad_ipaddrs = sorted(set(addresses) & set(self.ssl_connection_bad_ipaddrs), key=self.ssl_connection_bad_ipaddrs.get)
-                unkown_ipaddrs = list(set(addresses) - set(self.ssl_connection_bad_ipaddrs))
+            window = self.max_window + i
+            good_addrs = [x for x in addresses if x in self.ssl_connection_good_ipaddrs]
+            if len(good_addrs) > window:
+                good_addrs = sorted(good_addrs, key=self.ssl_connection_time.get)[:window]
+            unkown_ipaddrs = [x for x in addresses if x not in self.ssl_connection_good_ipaddrs and x not in self.ssl_connection_bad_ipaddrs]
+            if len(unkown_ipaddrs) > window:
                 random.shuffle(unkown_ipaddrs)
-                logging.info("bad_ipaddrs length=%d, unkown_ipaddrs length=%d", len(bad_ipaddrs), len(unkown_ipaddrs))
-                addrs = bad_ipaddrs[:window] + unkown_ipaddrs[:window]
-                if len(addrs) < self.max_window:
-                    addrs += random.sample(addresses, self.max_window - len(addrs))
+                unkown_ipaddrs = unkown_ipaddrs[:window]
+            bad_ipaddrs = [x for x in addresses if x in self.ssl_connection_bad_ipaddrs]
+            if len(bad_ipaddrs) > window:
+                bad_ipaddrs = sorted(bad_ipaddrs, key=self.ssl_connection_bad_ipaddrs.get)[:max(window, 3*window-len(good_addrs)-len(unkown_ipaddrs))]
+            addrs = good_addrs + bad_ipaddrs + unkown_ipaddrs
             queobj = gevent.queue.Queue() if gevent else Queue.Queue()
             for addr in addrs:
                 thread.start_new_thread(create_connection_withopenssl, (addr, timeout, queobj))
@@ -1897,6 +1830,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 elif i == 0:
                     # only output first error
                     logging.warning('create_ssl_connection to %r with %s return %r, try again.', hostname, addrs, sock)
+            reorg_ipaddrs()
         if isinstance(sock, Exception):
             raise sock
 
