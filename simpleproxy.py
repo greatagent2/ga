@@ -696,7 +696,7 @@ class URLFetch(object):
 
     def __google_fetch(self, method, url, headers, body, timeout, **kwargs):
         url = url.replace('http://', 'https://', 1)
-        url = re.sub(r'^(\w+://)', r'\g<1>1-ps.googleusercontent.com/h/', url)
+        url = re.sub(r'^(\w+://)', r'\g<1>2-ps.googleusercontent.com/h/', url)
         #print url
         proxies = {'http':'%s:%s'%('127.0.0.1', common.LISTEN_PORT),'https':'%s:%s'%('127.0.0.1', common.LISTEN_PORT)}
         opener = urllib2.build_opener(urllib2.ProxyHandler(proxies))

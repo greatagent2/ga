@@ -193,7 +193,7 @@ class Common(object):
 		self.__init__()
 		
 	def info(self):
-		random.shuffle(self.AUTOUPDATE_SERVER)
+		#random.shuffle(self.AUTOUPDATE_SERVER)
 		info = ''
 		info += '------------------------------------------------------\n'
 		info += 'GreatAgent Version	: %s \n'% (self.CONFIG_VERSION)
